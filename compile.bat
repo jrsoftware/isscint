@@ -32,11 +32,11 @@ call "%VSTOOLSROOT%\VsDevCmd.bat"
 if errorlevel 1 goto exit
 
 echo - Scintilla.dll
-if not "%1"=="clean" goto noclean
-nmake -f scintilla.mak clean
+if "%1"=="noclean" goto noclean
+nmake -s -f scintilla.mak clean
 if errorlevel 1 goto failed
 :noclean
-nmake -f scintilla.mak
+nmake -s -f scintilla.mak component
 if errorlevel 1 goto failed
 
 echo Success!

@@ -49,6 +49,8 @@ CXXFLAGS=$(CXXFLAGS) $(INCLUDEDIRS)
 
 ALL:	$(COMPONENT) $(LEXCOMPONENT) $(LEXLIB) $(DIR_O)\ScintillaWinS.obj
 
+component:	$(COMPONENT)
+
 clean:
 	-del /q $(DIR_O)\*.obj $(DIR_O)\*.pdb $(COMPONENT) $(LEXCOMPONENT) \
 	$(DIR_O)\*.res $(DIR_BIN)\*.map $(DIR_BIN)\*.exp $(DIR_BIN)\*.pdb $(DIR_BIN)\*.lib
