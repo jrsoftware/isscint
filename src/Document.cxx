@@ -14,14 +14,6 @@
 #include <string>
 #include <vector>
 
-// With Borland C++ 5.5, including <string> includes Windows.h leading to defining
-// FindText to FindTextA which makes calls here to Document::FindText fail.
-#ifdef __BORLANDC__
-#ifdef FindText
-#undef FindText
-#endif
-#endif
-
 #include "Platform.h"
 
 #include "ILexer.h"
@@ -95,7 +87,7 @@ void LexInterface::Colourise(int start, int end) {
 
 Document::Document() {
 	refCount = 0;
-#ifdef unix
+#ifdef __unix__
 	eolMode = SC_EOL_LF;
 #else
 	eolMode = SC_EOL_CRLF;
@@ -552,7 +544,7 @@ int Document::NextPosition(int pos, int moveDir) const {
 				// See http://msdn.microsoft.com/en-us/library/cc194792%28v=MSDN.10%29.aspx
 				// http://msdn.microsoft.com/en-us/library/cc194790.aspx
 				if ((pos - 1) <= posStartLine) {
-					return posStartLine - 1;
+					return pos - 1;
 				} else if (IsDBCSLeadByte(cb.CharAt(pos - 1))) {
 					// Must actually be trail byte
 					return pos - 2;
@@ -1198,7 +1190,7 @@ bool Document::IsWordStartAt(int pos) {
 	if (pos > 0) {
 		CharClassify::cc ccPos = WordCharClass(CharAt(pos));
 		return (ccPos == CharClassify::ccWord || ccPos == CharClassify::ccPunctuation) &&
-			(ccPos != WordCharClass(CharAt(pos - 1)));
+			(ccPos != WordCharClass(CharAt(NextPosition(pos, -1))));
 	}
 	return true;
 }
@@ -1209,7 +1201,7 @@ bool Document::IsWordStartAt(int pos) {
  */
 bool Document::IsWordEndAt(int pos) {
 	if (pos < Length()) {
-		CharClassify::cc ccPrev = WordCharClass(CharAt(pos-1));
+		CharClassify::cc ccPrev = WordCharClass(CharAt(NextPosition(pos, -1)));
 		return (ccPrev == CharClassify::ccWord || ccPrev == CharClassify::ccPunctuation) &&
 			(ccPrev != WordCharClass(CharAt(pos)));
 	}
