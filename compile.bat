@@ -32,15 +32,11 @@ call "%VSTOOLSROOT%\VsDevCmd.bat"
 if errorlevel 1 goto exit
 
 echo - Scintilla.dll
+if not "%1"=="clean" goto noclean
 nmake -f scintilla.mak clean
 if errorlevel 1 goto failed
+:noclean
 nmake -f scintilla.mak
-if errorlevel 1 goto failed
-
-echo - Renaming Scintilla.dll
-cd ..\bin
-if errorlevel 1 goto failed
-move Scintilla.dll isscint.dll
 if errorlevel 1 goto failed
 
 echo Success!
