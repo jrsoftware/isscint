@@ -132,7 +132,7 @@ void AutoComplete::Select(const char *word) {
 	char item[maxItemLen];
 	int start = 0; // lower bound of the api array block to search
 	int end = lb->Length() - 1; // upper bound of the api array block to search
-	while ((start <= end) && (location == -1)) { // Binary searching loop
+	while (lenWord && (start <= end) && (location == -1)) { // Binary searching loop
 		int pivot = (start + end) / 2;
 		lb->GetValue(pivot, item, maxItemLen);
 		int cond;

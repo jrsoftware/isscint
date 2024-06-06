@@ -1367,7 +1367,7 @@ public:
 };
 
 const Point ListBoxX::ItemInset(0, 0);
-const Point ListBoxX::TextInset(2, 0);
+const Point ListBoxX::TextInset(2, 1);
 const Point ListBoxX::ImageInset(1, 0);
 
 ListBox *ListBox::Allocate() {

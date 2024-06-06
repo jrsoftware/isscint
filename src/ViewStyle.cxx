@@ -301,9 +301,9 @@ void ViewStyle::Refresh(Surface &surface) {
 	for (unsigned int i=0; i<stylesSize; i++) {
 		if (i != STYLE_DEFAULT) {
 			styles[i].Realise(surface, zoomLevel, &styles[STYLE_DEFAULT], extraFontFlag);
-			if (maxAscent < styles[i].ascent)
+			if (maxAscent < styles[i].ascent && i != STYLE_AUTOCOMPLETION)
 				maxAscent = styles[i].ascent;
-			if (maxDescent < styles[i].descent)
+			if (maxDescent < styles[i].descent && i != STYLE_AUTOCOMPLETION)
 				maxDescent = styles[i].descent;
 		}
 		if (styles[i].IsProtected()) {

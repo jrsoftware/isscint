@@ -220,7 +220,7 @@ void ScintillaBase::AutoCompleteStart(int lenEntered, const char *list) {
 		}
 	}
 	ac.Start(wMain, idAutoComplete, sel.MainCaret(), PointMainCaret(),
-				lenEntered, vs.lineHeight, IsUnicodeMode());
+				lenEntered, vs.styles[STYLE_AUTOCOMPLETION].lineHeight, IsUnicodeMode());
 
 	PRectangle rcClient = GetClientRectangle();
 	Point pt = LocationFromPosition(sel.MainCaret() - lenEntered);
@@ -250,8 +250,8 @@ void ScintillaBase::AutoCompleteStart(int lenEntered, const char *list) {
 	rcac.right = rcac.left + widthLB;
 	rcac.bottom = Platform::Minimum(rcac.top + heightLB, rcPopupBounds.bottom);
 	ac.lb->SetPositionRelative(rcac, wMain);
-	ac.lb->SetFont(vs.styles[STYLE_DEFAULT].font);
-	unsigned int aveCharWidth = vs.styles[STYLE_DEFAULT].aveCharWidth;
+	ac.lb->SetFont(vs.styles[STYLE_AUTOCOMPLETION].font);
+	unsigned int aveCharWidth = vs.styles[STYLE_AUTOCOMPLETION].aveCharWidth;
 	ac.lb->SetAverageCharWidth(aveCharWidth);
 	ac.lb->SetDoubleClickAction(AutoCompleteDoubleClick, this);
 
@@ -275,9 +275,7 @@ void ScintillaBase::AutoCompleteStart(int lenEntered, const char *list) {
 	rcList.bottom = rcList.top + heightAlloced;
 	ac.lb->SetPositionRelative(rcList, wMain);
 	ac.Show(true);
-	if (lenEntered != 0) {
-		AutoCompleteMoveToCurrentWord();
-	}
+	AutoCompleteMoveToCurrentWord();
 }
 
 void ScintillaBase::AutoCompleteCancel() {
@@ -299,7 +297,10 @@ void ScintillaBase::AutoCompleteMoveToCurrentWord() {
 	char wordCurrent[1000];
 	int i;
 	int startWord = ac.posStart - ac.startLen;
-	for (i = startWord; i < sel.MainCaret() && i - startWord < 1000; i++)
+	int endWord = sel.MainCaret();
+	//if (ac.selectRestOfWord)
+		endWord = pdoc->ExtendWordSelect(endWord, 1, true);
+	for (i = startWord; i < endWord && i - startWord < 1000; i++)
 		wordCurrent[i - startWord] = pdoc->CharAt(i);
 	wordCurrent[Platform::Minimum(i - startWord, 999)] = '\0';
 	ac.Select(wordCurrent);

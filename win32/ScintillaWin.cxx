@@ -697,7 +697,9 @@ sptr_t ScintillaWin::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 
 		case WM_TIMER:
 			if (wParam == standardTimerID && timer.ticking) {
-				Tick();
+				HWND capWnd = ::GetCapture();
+				if (!capWnd || capWnd == MainHWND())
+					Tick();
 			} else if (wParam == idleTimerID && idler.state) {
 				SendMessage(MainHWND(), SC_WIN_IDLE, 0, 1);
 			} else {
@@ -784,7 +786,7 @@ sptr_t ScintillaWin::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 					::GetCursorPos(&pt);
 					::ScreenToClient(MainHWND(), &pt);
 					if (PointInSelMargin(Point(pt.x, pt.y))) {
-						DisplayCursor(Window::cursorReverseArrow);
+						DisplayCursor(reverseArrowInMargin ? Window::cursorReverseArrow : Window::cursorArrow);
 					} else if (PointInSelection(Point(pt.x, pt.y)) && !SelectionEmpty()) {
 						DisplayCursor(Window::cursorArrow);
 					} else if (PointIsHotspot(Point(pt.x, pt.y))) {
@@ -883,6 +885,7 @@ sptr_t ScintillaWin::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 					!(::IsChild(wThis, wOther) || (wOther == wCT))) {
 					SetFocusState(false);
 					DestroySystemCaret();
+					SetTicking(false);
 				}
 			}
 			//RealizeWindowPalette(true);

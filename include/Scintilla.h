@@ -124,6 +124,7 @@ typedef sptr_t (*SciFnDirect)(sptr_t ptr, unsigned int iMessage, uptr_t wParam, 
 #define SC_MARK_LEFTRECT 27
 #define SC_MARK_AVAILABLE 28
 #define SC_MARK_UNDERLINE 29
+#define SC_MARK_BACKFORE 3030
 #define SC_MARK_CHARACTER 10000
 #define SC_MARKNUM_FOLDEREND 25
 #define SC_MARKNUM_FOLDEROPENMID 26
@@ -166,6 +167,7 @@ typedef sptr_t (*SciFnDirect)(sptr_t ptr, unsigned int iMessage, uptr_t wParam, 
 #define STYLE_CONTROLCHAR 36
 #define STYLE_INDENTGUIDE 37
 #define STYLE_CALLTIP 38
+#define STYLE_AUTOCOMPLETION 39
 #define STYLE_LASTPREDEFINED 39
 #define STYLE_MAX 255
 #define SC_CHARSET_ANSI 0

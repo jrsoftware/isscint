@@ -114,6 +114,7 @@ Editor::Editor() {
 	printColourMode = SC_PRINT_NORMAL;
 	printWrapState = eWrapWord;
 	cursorMode = SC_CURSORNORMAL;
+	reverseArrowInMargin = false;
 	controlCharSymbol = 0;	/* Draw the control characters */
 
 	hasFocus = false;
@@ -2619,7 +2620,8 @@ void Editor::DrawLine(Surface *surface, ViewStyle &vsDraw, int line, int lineVis
 	if (!overrideBackground) {
 		int marks = pdoc->GetMark(line);
 		for (int markBit = 0; (markBit < 32) && marks; markBit++) {
-			if ((marks & 1) && (vsDraw.markers[markBit].markType == SC_MARK_BACKGROUND) &&
+			if ((marks & 1) && ((vsDraw.markers[markBit].markType == SC_MARK_BACKGROUND) ||
+				(vsDraw.markers[markBit].markType == SC_MARK_BACKFORE)) &&
 			        (vsDraw.markers[markBit].alpha == SC_ALPHA_NOALPHA)) {
 				background = vsDraw.markers[markBit].back.allocated;
 				overrideBackground = true;
@@ -2839,6 +2841,15 @@ void Editor::DrawLine(Surface *surface, ViewStyle &vsDraw, int line, int lineVis
 				if (vsDraw.hotspotForegroundSet)
 					textFore = vsDraw.hotspotForeground.allocated;
 			}
+
+			marks = pdoc->GetMark(line);
+			for (markBit = 0; (markBit < 32) && marks; markBit++) {
+				if ((marks & 1) && (vsDraw.markers[markBit].markType == SC_MARK_BACKFORE)) {
+					textFore = vsDraw.markers[markBit].fore.allocated;
+				}
+				marks >>= 1;
+			}
+
 			const int inSelection = hideSelection ? 0 : sel.CharacterInSelection(iDoc);
 			if (inSelection && (vsDraw.selforeset)) {
 				textFore = (inSelection == 1) ? vsDraw.selforeground.allocated : vsDraw.selAdditionalForeground.allocated;
@@ -3050,7 +3061,8 @@ void Editor::DrawLine(Surface *surface, ViewStyle &vsDraw, int line, int lineVis
 	}
 	marks = pdoc->GetMark(line);
 	for (markBit = 0; (markBit < 32) && marks; markBit++) {
-		if ((marks & 1) && (vsDraw.markers[markBit].markType == SC_MARK_BACKGROUND)) {
+		if ((marks & 1) && ((vsDraw.markers[markBit].markType == SC_MARK_BACKGROUND) ||
+			(vsDraw.markers[markBit].markType == SC_MARK_BACKFORE))) {
 			SimpleAlphaRectangle(surface, rcSegment, vsDraw.markers[markBit].back.allocated, vsDraw.markers[markBit].alpha);
 		} else if ((marks & 1) && (vsDraw.markers[markBit].markType == SC_MARK_UNDERLINE)) {
 			PRectangle rcUnderline = rcSegment;
@@ -6151,7 +6163,7 @@ void Editor::ButtonMove(Point pt) {
 	} else {
 		if (vs.fixedColumnWidth > 0) {	// There is a margin
 			if (PointInSelMargin(pt)) {
-				DisplayCursor(Window::cursorReverseArrow);
+				DisplayCursor(reverseArrowInMargin ? Window::cursorReverseArrow : Window::cursorArrow);
 				SetHotSpotRange(NULL);
 				return; 	// No need to test for selection
 			}
