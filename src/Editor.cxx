@@ -9107,6 +9107,7 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_CLEARSELECTIONS:
 		sel.Clear();
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 
@@ -9117,11 +9118,13 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_ADDSELECTION:
 		sel.AddSelection(SelectionRange(wParam, lParam));
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 
 	case SCI_SETMAINSELECTION:
 		sel.SetMain(wParam);
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 
@@ -9130,6 +9133,7 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_SETSELECTIONNCARET:
 		sel.Range(wParam).caret.SetPosition(lParam);
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 
@@ -9138,6 +9142,7 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_SETSELECTIONNANCHOR:
 		sel.Range(wParam).anchor.SetPosition(lParam);
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 	case SCI_GETSELECTIONNANCHOR:
@@ -9145,6 +9150,7 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_SETSELECTIONNCARETVIRTUALSPACE:
 		sel.Range(wParam).caret.SetVirtualSpace(lParam);
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 
@@ -9153,6 +9159,7 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_SETSELECTIONNANCHORVIRTUALSPACE:
 		sel.Range(wParam).anchor.SetVirtualSpace(lParam);
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 
@@ -9161,6 +9168,7 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_SETSELECTIONNSTART:
 		sel.Range(wParam).anchor.SetPosition(lParam);
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 
@@ -9169,6 +9177,7 @@ sptr_t Editor::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case SCI_SETSELECTIONNEND:
 		sel.Range(wParam).caret.SetPosition(lParam);
+    ContainerNeedsUpdate(SC_UPDATE_SELECTION);
 		Redraw();
 		break;
 
