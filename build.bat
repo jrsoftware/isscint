@@ -31,7 +31,6 @@ if "%ISSRCROOT%"=="" goto buildsettingserror
 call .\compile.bat %1
 if errorlevel 1 goto failed
 echo Compiling isscint.dll done
-pause
 
 echo - Copying files
 copy bin\Scintilla.dll "%ISSRCROOT%\Files\isscint.dll"
