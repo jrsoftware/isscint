@@ -72,8 +72,9 @@ const char *FontNames::Save(const char *name) {
 	return names[max-1];
 }
 
-FontRealised::FontRealised(const FontSpecification &fs) {
+FontRealised::FontRealised(const FontSpecification &fs, bool styleAutoComplete) {
 	frNext = NULL;
+	styleAutoCompleteOnly = styleAutoComplete;
 	(FontSpecification &)(*this) = fs;
 }
 
@@ -117,9 +118,9 @@ FontRealised *FontRealised::Find(const FontSpecification &fs) {
 void FontRealised::FindMaxAscentDescent(unsigned int &maxAscent, unsigned int &maxDescent) {
 	FontRealised *fr = this;
 	while (fr) {
-		if (maxAscent < fr->ascent)
+		if (maxAscent < fr->ascent && !fr->styleAutoCompleteOnly)
 			maxAscent = fr->ascent;
-		if (maxDescent < fr->descent)
+		if (maxDescent < fr->descent && !fr->styleAutoCompleteOnly)
 			maxDescent = fr->descent;
 		fr = fr->frNext;
 	}
@@ -355,17 +356,19 @@ void ViewStyle::RefreshColourPalette(Palette &pal, bool want) {
 	pal.WantFind(hotspotBackground, want);
 }
 
-void ViewStyle::CreateFont(const FontSpecification &fs) {
+void ViewStyle::CreateFont(const FontSpecification &fs, bool styleAutoComplete) {
 	if (fs.fontName) {
 		for (FontRealised *cur=frFirst; cur; cur=cur->frNext) {
-			if (cur->EqualTo(fs))
+			if (cur->EqualTo(fs)) {
+				cur->styleAutoCompleteOnly = false;
 				return;
+			}
 			if (!cur->frNext) {
-				cur->frNext = new FontRealised(fs);
+				cur->frNext = new FontRealised(fs, styleAutoComplete);
 				return;
 			}
 		}
-		frFirst = new FontRealised(fs);
+		frFirst = new FontRealised(fs, styleAutoComplete);
 	}
 }
 
@@ -379,9 +382,9 @@ void ViewStyle::Refresh(Surface &surface) {
 		styles[i].extraFontFlag = extraFontFlag;
 	}
 
-	CreateFont(styles[STYLE_DEFAULT]);
+	CreateFont(styles[STYLE_DEFAULT], false);
 	for (unsigned int j=0; j<stylesSize; j++) {
-		CreateFont(styles[j]);
+		CreateFont(styles[j], j == STYLE_AUTOCOMPLETION);
 	}
 
 	frFirst->Realise(surface, zoomLevel);

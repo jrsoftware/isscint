@@ -46,7 +46,8 @@ class FontRealised : public FontSpecification, public FontMeasurements {
 public:
 	Font font;
 	FontRealised *frNext;
-	FontRealised(const FontSpecification &fs);
+	bool styleAutoCompleteOnly;
+	FontRealised(const FontSpecification &fs, bool styleAutoComplete);
 	virtual ~FontRealised();
 	void Realise(Surface &surface, int zoomLevel);
 	FontRealised *Find(const FontSpecification &fs);
@@ -138,7 +139,7 @@ public:
 	ViewStyle(const ViewStyle &source);
 	~ViewStyle();
 	void Init(size_t stylesSize_=64);
-	void CreateFont(const FontSpecification &fs);
+	void CreateFont(const FontSpecification &fs, bool styleAutoComplete);
 	void RefreshColourPalette(Palette &pal, bool want);
 	void Refresh(Surface &surface);
 	void AllocStyles(size_t sizeNew);
