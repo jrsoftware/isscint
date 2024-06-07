@@ -18,6 +18,13 @@
 *.pbxbtree
 *.mode1v3
 *.pbxuser
+*.xcbkptlist
+*.xcscheme
+*.xcworkspacedata
+*.xcuserstate
+*.xcsettings
+xcschememanagement.plist
+.DS_Store
 cocoa/build
 cocoa/ScintillaFramework/build
 cocoa/ScintillaTest/build
