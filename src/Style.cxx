@@ -45,6 +45,7 @@ FontMeasurements::FontMeasurements() {
 }
 
 void FontMeasurements::Clear() {
+  lineHeight = 2;
 	ascent = 1;
 	descent = 1;
 	aveCharWidth = 1;

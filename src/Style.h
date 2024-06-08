@@ -43,6 +43,7 @@ public:
 };
 
 struct FontMeasurements {
+  unsigned int lineHeight;
 	unsigned int ascent;
 	unsigned int descent;
 	XYPOSITION aveCharWidth;

@@ -99,6 +99,7 @@ void FontRealised::Realise(Surface &surface, int zoomLevel, int technology) {
 
 	ascent = surface.Ascent(font);
 	descent = surface.Descent(font);
+  lineHeight = surface.Height(font);
 	aveCharWidth = surface.AverageCharWidth(font);
 	spaceWidth = surface.WidthChar(font, ' ');
 	if (frNext) {
