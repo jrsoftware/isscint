@@ -295,7 +295,7 @@ void ScintillaBase::AutoCompleteMoveToCurrentWord() {
 	int endWord = sel.MainCaret();
 	//if (ac.selectRestOfWord)
 		endWord = pdoc->ExtendWordSelect(endWord, 1, true);
-	std::string wordCurrent = RangeText(ac.posStart - ac.startLen, endword);
+	std::string wordCurrent = RangeText(ac.posStart - ac.startLen, endWord);
 	ac.Select(wordCurrent.c_str());
 }
 
