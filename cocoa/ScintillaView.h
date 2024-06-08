@@ -34,9 +34,6 @@ extern NSString *SCIUpdateUINotification;
 
   // Set when we are in composition mode and partial input is displayed.
   NSRange mMarkedTextRange;
-  
-  // Caret position when a drag operation started.
-  int mLastPosition;
 }
 
 - (void) dealloc;
@@ -46,7 +43,7 @@ extern NSString *SCIUpdateUINotification;
 - (BOOL) canUndo;
 - (BOOL) canRedo;
 
-@property (retain) ScintillaView* owner;
+@property (assign) ScintillaView* owner;
 @end
 
 @interface ScintillaView : NSView <InfoBarCommunicator>
@@ -65,6 +62,8 @@ extern NSString *SCIUpdateUINotification;
   NSScroller* mHorizontalScroller;
   NSScroller* mVerticalScroller;
   
+  CGFloat zoomDelta;
+  
   // Area to display additional controls (e.g. zoom info, caret position, status info).
   NSView <InfoBarCommunicator>* mInfoBar;
   BOOL mInfoBarAtTop;
@@ -72,7 +71,7 @@ extern NSString *SCIUpdateUINotification;
 }
 
 - (void) dealloc;
-- (void) layout;
+- (void) positionSubViews;
 
 - (void) sendNotification: (NSString*) notificationName;
 - (void) notify: (NotificationType) type message: (NSString*) message location: (NSPoint) location
