@@ -127,7 +127,9 @@ NSString *SCIUpdateUINotification = @"SCIUpdateUI";
 {
   CGContextRef context = (CGContextRef) [[NSGraphicsContext currentContext] graphicsPort];
   
-  mOwner.backend->Draw(rect, context);
+  if (!mOwner.backend->Draw(rect, context)) {
+    [self display];
+  }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -638,6 +640,29 @@ NSString *SCIUpdateUINotification = @"SCIUpdateUI";
 //--------------------------------------------------------------------------------------------------
 
 /**
+ * Receives zoom messages, for example when a "pinch zoom" is performed on the trackpad.
+ */
+- (void) magnifyWithEvent: (NSEvent *) event
+{
+#if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
+  zoomDelta += event.magnification * 10.0;
+
+  if (fabsf(zoomDelta)>=1.0) {
+    long zoomFactor = [self getGeneralProperty: SCI_GETZOOM] + zoomDelta;
+    [self setGeneralProperty: SCI_SETZOOM parameter: zoomFactor value:0];
+    zoomDelta = 0.0;
+  }     
+#endif
+}
+
+- (void) beginGestureWithEvent: (NSEvent *) event
+{
+  zoomDelta = 0.0;
+}
+
+//--------------------------------------------------------------------------------------------------
+
+/**
  * Sends a new notification of the given type to the default notification center.
  */
 - (void) sendNotification: (NSString*) notificationName
@@ -835,6 +860,7 @@ static void notification(intptr_t windowid, unsigned int iMessage, uintptr_t wPa
 
 - (void) dealloc
 {
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
   [mInfoBar release];
   delete mBackend;
   [super dealloc];
@@ -860,7 +886,7 @@ static void notification(intptr_t windowid, unsigned int iMessage, uintptr_t wPa
 {
   [super viewDidMoveToWindow];
   
-  [self layout];
+  [self positionSubViews];
   
   // Enable also mouse move events for our window (and so this view).
   [[self window] setAcceptsMouseMovedEvents: YES];
@@ -871,7 +897,7 @@ static void notification(intptr_t windowid, unsigned int iMessage, uintptr_t wPa
 /**
  * Used to position and size the parts of the editor (content, scrollers, info bar).
  */
-- (void) layout
+- (void) positionSubViews
 {
   int scrollerWidth = [NSScroller scrollerWidth];
 
@@ -984,7 +1010,7 @@ static void notification(intptr_t windowid, unsigned int iMessage, uintptr_t wPa
     [mVerticalScroller setHidden: hideScroller];
     if (!hideScroller)
       [mVerticalScroller setFloatValue: 0];
-    [self layout];
+    [self positionSubViews];
   }
   
   if (!hideScroller)
@@ -1034,7 +1060,7 @@ static void notification(intptr_t windowid, unsigned int iMessage, uintptr_t wPa
   {
     result = YES;
     [mHorizontalScroller setHidden: hideScroller];
-    [self layout];
+    [self positionSubViews];
   }
   
   if (!hideScroller)
@@ -1085,7 +1111,7 @@ static void notification(intptr_t windowid, unsigned int iMessage, uintptr_t wPa
 - (void) setFrame: (NSRect) newFrame
 {
   [super setFrame: newFrame];
-  [self layout];
+  [self positionSubViews];
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1462,7 +1488,7 @@ static void notification(intptr_t windowid, unsigned int iMessage, uintptr_t wPa
       mInitialInfoBarWidth = [mInfoBar frame].size.width;
     }
     
-    [self layout];
+    [self positionSubViews];
   }
 }
 

@@ -6,6 +6,9 @@ compilesettings.bat
 *.obj
 *.pyc
 *.dll
+*.dylib
+*.framework
+*.pyd
 *.exp
 *.lib
 *.pdb
@@ -20,6 +23,8 @@ compilesettings.bat
 *.pbxbtree
 *.mode1v3
 *.pbxuser
+*.pbproj
+*.log
 *.xcbkptlist
 *.xcscheme
 *.xcworkspacedata
@@ -31,4 +36,15 @@ cocoa/build
 cocoa/ScintillaFramework/build
 cocoa/ScintillaTest/build
 macosx/SciTest/build
-
+*.cppcheck
+Makefile.Debug
+Makefile.Release
+*_resource.rc
+moc_*
+*.pro.user
+ScintillaEdit.cpp
+ScintillaEdit.h
+ScintillaConstants.py
+ScintillaEditBase.intermediate.manifest
+ScintillaEdit.intermediate.manifest
+qt/*/Makefile
