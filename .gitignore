@@ -1,3 +1,5 @@
+buildsettings.bat
+compilesettings.bat
 *.o
 *.a
 *.lib
