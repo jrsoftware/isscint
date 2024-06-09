@@ -1223,6 +1223,15 @@ void EditView::DrawCarets(Surface *surface, const EditModel &model, const ViewSt
 					rcCaret.right = rcCaret.left + vsDraw.caretWidth;
 				}
 				ColourDesired caretColour = mainCaret ? vsDraw.caretcolour : vsDraw.additionalCaretColour;
+
+				int marks = model.pdoc->GetMark(lineDoc);
+				for (int markBit = 0; (markBit < 32) && marks; markBit++) {
+					if ((marks & 1) && (vsDraw.markers[markBit].markType == SC_MARK_BACKFORE)) {
+						caretColour = vsDraw.markers[markBit].fore;
+					}
+					marks >>= 1;
+				}
+
 				if (drawBlockCaret) {
 					DrawBlockCaret(surface, model, vsDraw, ll, subLine, xStart, offset, posCaret.Position(), rcCaret, caretColour);
 				} else {
@@ -1410,7 +1419,8 @@ static void DrawTranslucentLineState(Surface *surface, const EditModel &model, c
 	int marksDrawnInText = marksOfLine & vsDraw.maskDrawInText;
 	for (int markBit = 0; (markBit < 32) && marksDrawnInText; markBit++) {
 		if (marksDrawnInText & 1) {
-			if (vsDraw.markers[markBit].markType == SC_MARK_BACKGROUND) {
+			if ((vsDraw.markers[markBit].markType == SC_MARK_BACKGROUND) ||
+        (vsDraw.markers[markBit].markType == SC_MARK_BACKFORE)) {
 				SimpleAlphaRectangle(surface, rcLine, vsDraw.markers[markBit].back, vsDraw.markers[markBit].alpha);
 			} else if (vsDraw.markers[markBit].markType == SC_MARK_UNDERLINE) {
 				PRectangle rcUnderline = rcLine;
@@ -1430,7 +1440,7 @@ static void DrawTranslucentLineState(Surface *surface, const EditModel &model, c
 }
 
 void EditView::DrawForeground(Surface *surface, const EditModel &model, const ViewStyle &vsDraw, const LineLayout *ll,
-	int lineVisible, PRectangle rcLine, Range lineRange, int posLineStart, int xStart,
+	int line, int lineVisible, PRectangle rcLine, Range lineRange, int posLineStart, int xStart,
 	int subLine, ColourOptional background) {
 
 	const bool selBackDrawn = vsDraw.SelectionBackgroundDrawn();
@@ -1492,6 +1502,15 @@ void EditView::DrawForeground(Surface *surface, const EditModel &model, const Vi
 					}
 				}
 			}
+
+			int marks = model.pdoc->GetMark(line);
+			for (int markBit = 0; (markBit < 32) && marks; markBit++) {
+				if ((marks & 1) && (vsDraw.markers[markBit].markType == SC_MARK_BACKFORE)) {
+					textFore = vsDraw.markers[markBit].fore;
+				}
+				marks >>= 1;
+			}
+
 			const int inSelection = hideSelection ? 0 : model.sel.CharacterInSelection(iDoc);
 			if (inSelection && (vsDraw.selColours.fore.isSet)) {
 				textFore = (inSelection == 1) ? vsDraw.selColours.fore : vsDraw.selAdditionalForeground;
@@ -1712,7 +1731,7 @@ void EditView::DrawLine(Surface *surface, const EditModel &model, const ViewStyl
 	}
 
 	if (phase & drawText) {
-		DrawForeground(surface, model, vsDraw, ll, lineVisible, rcLine, lineRange, posLineStart, xStart,
+		DrawForeground(surface, model, vsDraw, ll, line, lineVisible, rcLine, lineRange, posLineStart, xStart,
 			subLine, background);
 	}
 

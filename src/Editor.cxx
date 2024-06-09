@@ -4273,12 +4273,18 @@ bool Editor::PointInSelMargin(Point pt) const {
 
 Window::Cursor Editor::GetMarginCursor(Point pt) const {
 	int x = 0;
+  int marginNumbers = -1;
 	for (int margin = 0; margin <= SC_MAX_MARGIN; margin++) {
 		if ((pt.x >= x) && (pt.x < x + vs.ms[margin].width))
 			return static_cast<Window::Cursor>(vs.ms[margin].cursor);
 		x += vs.ms[margin].width;
+    if(marginNumbers == -1 && vs.ms[margin].style == SC_MARGIN_NUMBER)
+      marginNumbers = margin;
 	}
-	return Window::cursorReverseArrow;
+  if(marginNumbers != -1)
+    return static_cast<Window::Cursor>(vs.ms[marginNumbers].cursor);
+  else
+    return Window::cursorReverseArrow;
 }
 
 void Editor::TrimAndSetSelection(int currentPos_, int anchor_) {
