@@ -4,7 +4,8 @@
  *
  * Created by Mike Lischke.
  *
- * Copyright 2009 Sun Microsystems, Inc. All rights reserved.
+ * Copyright 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2009, 2011 Sun Microsystems, Inc. All rights reserved.
  * This file is dual licensed under LGPL v2.1 and the Scintilla license (http://www.scintilla.org/License.txt).
  */
 
@@ -21,11 +22,33 @@
 
 extern NSString *SCIUpdateUINotification;
 
+@protocol ScintillaNotificationProtocol
+- (void)notification: (Scintilla::SCNotification*)notification;
+@end
+
+/**
+ * MarginView draws line numbers and other margins next to the text view.
+ */
+@interface MarginView : NSRulerView
+{
+@private
+  int marginWidth;
+  ScintillaView *owner;
+  NSMutableArray *currentCursors;
+}
+
+@property (assign) int marginWidth;
+@property (assign) ScintillaView *owner;
+
+- (id)initWithScrollView:(NSScrollView *)aScrollView;
+
+@end
+
 /**
  * InnerView is the Cocoa interface to the Scintilla backend. It handles text input and
  * provides a canvas for painting the output.
  */
-@interface InnerView : NSView <NSTextInput>
+@interface InnerView : NSView <NSTextInputClient, NSUserInterfaceValidations>
 {
 @private
   ScintillaView* mOwner;
@@ -34,7 +57,10 @@ extern NSString *SCIUpdateUINotification;
 
   // Set when we are in composition mode and partial input is displayed.
   NSRange mMarkedTextRange;
+  BOOL undoCollectionWasActive;
 }
+
+@property (nonatomic, assign) ScintillaView* owner;
 
 - (void) dealloc;
 - (void) removeMarkedText;
@@ -43,7 +69,6 @@ extern NSString *SCIUpdateUINotification;
 - (BOOL) canUndo;
 - (BOOL) canRedo;
 
-@property (assign) ScintillaView* owner;
 @end
 
 @interface ScintillaView : NSView <InfoBarCommunicator>
@@ -53,14 +78,11 @@ extern NSString *SCIUpdateUINotification;
   // It uses the content view for display.
   Scintilla::ScintillaCocoa* mBackend;
   
-  // The object (eg NSDocument) that controls the ScintillaView.
-  NSObject* mOwner;
-  
   // This is the actual content to which the backend renders itself.
   InnerView* mContent;
   
-  NSScroller* mHorizontalScroller;
-  NSScroller* mVerticalScroller;
+  NSScrollView *scrollView;
+  MarginView *marginView;
   
   CGFloat zoomDelta;
   
@@ -68,7 +90,13 @@ extern NSString *SCIUpdateUINotification;
   NSView <InfoBarCommunicator>* mInfoBar;
   BOOL mInfoBarAtTop;
   int mInitialInfoBarWidth;
+
+  id<ScintillaNotificationProtocol> mDelegate;
 }
+
+@property (nonatomic, readonly) Scintilla::ScintillaCocoa* backend;
+@property (nonatomic, assign) id<ScintillaNotificationProtocol> delegate;
+@property (nonatomic, readonly) NSScrollView *scrollView;
 
 - (void) dealloc;
 - (void) positionSubViews;
@@ -81,11 +109,7 @@ extern NSString *SCIUpdateUINotification;
 - (void) suspendDrawing: (BOOL) suspend;
 
 // Scroller handling
-- (BOOL) setVerticalScrollRange: (int) range page: (int) page;
-- (void) setVerticalScrollPosition: (float) position;
-- (BOOL) setHorizontalScrollRange: (int) range page: (int) page;
-- (void) setHorizontalScrollPosition: (float) position;
-
+- (void) setMarginWidth: (int) width;
 - (void) scrollerAction: (id) sender;
 - (InnerView*) content;
 
@@ -131,12 +155,23 @@ extern NSString *SCIUpdateUINotification;
 - (void) setInfoBar: (NSView <InfoBarCommunicator>*) aView top: (BOOL) top;
 - (void) setStatusText: (NSString*) text;
 
-- (void) findAndHighlightText: (NSString*) searchText
+- (BOOL) findAndHighlightText: (NSString*) searchText
                     matchCase: (BOOL) matchCase
                     wholeWord: (BOOL) wholeWord
                      scrollTo: (BOOL) scrollTo
                          wrap: (BOOL) wrap;
 
-@property Scintilla::ScintillaCocoa* backend;
-@property (retain) NSObject* owner;
+- (BOOL) findAndHighlightText: (NSString*) searchText
+                    matchCase: (BOOL) matchCase
+                    wholeWord: (BOOL) wholeWord
+                     scrollTo: (BOOL) scrollTo
+                         wrap: (BOOL) wrap
+                    backwards: (BOOL) backwards;
+
+- (int) findAndReplaceText: (NSString*) searchText
+                    byText: (NSString*) newText
+                 matchCase: (BOOL) matchCase
+                 wholeWord: (BOOL) wholeWord
+                     doAll: (BOOL) doAll;
+
 @end

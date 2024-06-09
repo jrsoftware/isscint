@@ -127,6 +127,7 @@ LEXOBJS=\
 	$(DIR_O)\LexHTML.obj \
 	$(DIR_O)\LexInno.obj \
 	$(DIR_O)\LexKix.obj \
+	$(DIR_O)\LexLaTeX.obj \
 	$(DIR_O)\LexLisp.obj \
 	$(DIR_O)\LexLout.obj \
 	$(DIR_O)\LexLua.obj \
@@ -148,6 +149,7 @@ LEXOBJS=\
 	$(DIR_O)\LexPB.obj \
 	$(DIR_O)\LexPerl.obj \
 	$(DIR_O)\LexPLM.obj \
+	$(DIR_O)\LexPO.obj \
 	$(DIR_O)\LexPOV.obj \
 	$(DIR_O)\LexPowerPro.obj \
 	$(DIR_O)\LexPowerShell.obj \
@@ -261,7 +263,7 @@ $(DIR_O)\Accessor.obj: ../lexlib/Accessor.cxx ../lexlib/Accessor.h
 $(DIR_O)\CallTip.obj: ../src/CallTip.cxx ../include/Platform.h \
   ../include/Scintilla.h ../src/CallTip.h
 $(DIR_O)\CellBuffer.obj: ../src/CellBuffer.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SVector.h ../src/SplitVector.h \
+  ../include/Scintilla.h ../src/SplitVector.h \
   ../src/Partitioning.h ../src/CellBuffer.h
 $(DIR_O)\CharacterSet.obj: ../lexlib/CharacterSet.cxx ../lexlib/CharacterSet.h
 $(DIR_O)\CharClassify.obj: ../src/CharClassify.cxx ../src/CharClassify.h
@@ -271,12 +273,12 @@ $(DIR_O)\Decoration.obj: ../src/Decoration.cxx ../include/Platform.h \
   ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
   ../src/RunStyles.h ../src/Decoration.h
 $(DIR_O)\Document.obj: ../src/Document.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SVector.h ../src/SplitVector.h \
+  ../include/Scintilla.h ../src/SplitVector.h \
   ../src/Partitioning.h ../src/RunStyles.h ../src/CellBuffer.h \
   ../src/CharClassify.h ../src/Decoration.h ../src/Document.h \
   ../src/RESearch.h ../src/PerLine.h
 $(DIR_O)\Editor.obj: ../src/Editor.cxx ../include/Platform.h ../include/Scintilla.h \
-  ../src/ContractionState.h ../src/SVector.h ../src/SplitVector.h \
+  ../src/ContractionState.h ../src/SplitVector.h \
   ../src/Partitioning.h ../src/CellBuffer.h ../src/KeyMap.h \
   ../src/RunStyles.h ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h \
   ../src/Style.h ../src/ViewStyle.h ../src/CharClassify.h \
@@ -368,6 +370,8 @@ $(DIR_O)\LexInno.obj: ..\lexers\LexInno.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexKix.obj: ..\lexers\LexKix.cxx $(LEX_HEADERS)
 
+$(DIR_O)\LexLaTeX.obj: ..\lexers\LexLaTeX.cxx $(LEX_HEADERS)
+
 $(DIR_O)\LexLisp.obj: ..\lexers\LexLisp.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexLout.obj: ..\lexers\LexLout.cxx $(LEX_HEADERS)
@@ -409,6 +413,8 @@ $(DIR_O)\LexPB.obj: ..\lexers\LexPB.cxx $(LEX_HEADERS)
 $(DIR_O)\LexPerl.obj: ..\lexers\LexPerl.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexPLM.obj: ..\lexers\LexPLM.cxx $(LEX_HEADERS)
+
+$(DIR_O)\LexPO.obj: ..\lexers\LexPO.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexPOV.obj: ..\lexers\LexPOV.cxx $(LEX_HEADERS)
 
@@ -475,12 +481,12 @@ $(DIR_O)\LexerSimple.obj: ../lexlib/LexerSimple.cxx ../lexlib/LexerSimple.h
 $(DIR_O)\LineMarker.obj: ../src/LineMarker.cxx ../include/Platform.h \
   ../include/Scintilla.h ../src/XPM.h ../src/LineMarker.h
 $(DIR_O)\PerLine.obj: ../src/PerLine.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SVector.h ../src/SplitVector.h \
+  ../include/Scintilla.h ../src/SplitVector.h \
   ../src/Partitioning.h ../src/RunStyles.h ../src/PerLine.h
 $(DIR_O)\PlatWin.obj: PlatWin.cxx ../include/Platform.h \
   ../src/UniConversion.h ../src/XPM.h
 $(DIR_O)\PositionCache.obj: ../src/PositionCache.cxx ../include/Platform.h ../include/Scintilla.h \
-  ../src/ContractionState.h ../src/SVector.h ../src/SplitVector.h \
+  ../src/ContractionState.h ../src/SplitVector.h \
   ../src/Partitioning.h ../src/CellBuffer.h ../src/KeyMap.h \
   ../src/RunStyles.h ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h \
   ../src/Style.h ../src/ViewStyle.h ../src/CharClassify.h \
@@ -492,7 +498,7 @@ $(DIR_O)\RunStyles.obj: ../src/RunStyles.cxx ../include/Platform.h \
   ../src/RunStyles.h
 $(DIR_O)\ScintillaBase.obj: ../src/ScintillaBase.cxx ../include/Platform.h \
   ../include/Scintilla.h \
-  ../src/ContractionState.h ../src/SVector.h ../src/SplitVector.h \
+  ../src/ContractionState.h ../src/SplitVector.h \
   ../src/Partitioning.h ../src/RunStyles.h ../src/CellBuffer.h \
   ../src/CallTip.h ../src/KeyMap.h ../src/Indicator.h ../src/XPM.h \
   ../src/LineMarker.h ../src/Style.h ../src/ViewStyle.h \
@@ -500,7 +506,7 @@ $(DIR_O)\ScintillaBase.obj: ../src/ScintillaBase.cxx ../include/Platform.h \
   ../src/Document.h ../src/Editor.h ../src/Selection.h ../src/ScintillaBase.h
 $(DIR_O)\ScintillaBaseL.obj: ../src/ScintillaBase.cxx ../include/Platform.h \
   ../include/Scintilla.h \
-  ../src/ContractionState.h ../src/SVector.h ../src/SplitVector.h \
+  ../src/ContractionState.h ../src/SplitVector.h \
   ../src/Partitioning.h ../src/RunStyles.h ../src/CellBuffer.h \
   ../src/CallTip.h ../src/KeyMap.h ../src/Indicator.h ../src/XPM.h \
   ../src/LineMarker.h ../src/Style.h ../src/ViewStyle.h \
@@ -508,7 +514,7 @@ $(DIR_O)\ScintillaBaseL.obj: ../src/ScintillaBase.cxx ../include/Platform.h \
   ../src/Document.h ../src/Editor.h ../src/Selection.h ../src/ScintillaBase.h
 $(DIR_O)\ScintillaWin.obj: ScintillaWin.cxx ../include/Platform.h \
   ../include/Scintilla.h ../src/ContractionState.h \
-  ../src/SVector.h ../src/SplitVector.h ../src/Partitioning.h \
+  ../src/SplitVector.h ../src/Partitioning.h \
   ../src/RunStyles.h ../src/CellBuffer.h ../src/CallTip.h ../src/KeyMap.h \
   ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h ../src/Style.h \
   ../src/AutoComplete.h ../src/ViewStyle.h ../src/CharClassify.h \
@@ -516,7 +522,7 @@ $(DIR_O)\ScintillaWin.obj: ScintillaWin.cxx ../include/Platform.h \
   ../src/ScintillaBase.h ../src/Selection.h ../src/UniConversion.h
 $(DIR_O)\ScintillaWinS.obj: ScintillaWin.cxx ../include/Platform.h \
   ../include/Scintilla.h ../src/ContractionState.h \
-  ../src/SVector.h ../src/SplitVector.h ../src/Partitioning.h \
+  ../src/SplitVector.h ../src/Partitioning.h \
   ../src/RunStyles.h ../src/CellBuffer.h ../src/CallTip.h ../src/KeyMap.h \
   ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h ../src/Style.h \
   ../src/AutoComplete.h ../src/ViewStyle.h ../src/CharClassify.h \
@@ -524,7 +530,7 @@ $(DIR_O)\ScintillaWinS.obj: ScintillaWin.cxx ../include/Platform.h \
   ../src/ScintillaBase.h ../src/Selection.h ../src/UniConversion.h
 $(DIR_O)\ScintillaWinL.obj: ScintillaWin.cxx ../include/Platform.h \
   ../include/Scintilla.h ../src/ContractionState.h \
-  ../src/SVector.h ../src/SplitVector.h ../src/Partitioning.h \
+  ../src/SplitVector.h ../src/Partitioning.h \
   ../src/RunStyles.h ../src/CellBuffer.h ../src/CallTip.h ../src/KeyMap.h \
   ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h ../src/Style.h \
   ../src/AutoComplete.h ../src/ViewStyle.h ../src/CharClassify.h \
