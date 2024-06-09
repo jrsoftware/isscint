@@ -3,17 +3,18 @@
 // Copyright 1998-2004 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
 
-#include <new>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <ctype.h>
 #include <time.h>
+#include <assert.h>
 
+#include <new>
 #include <string>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
@@ -30,6 +31,7 @@
 #ifdef SCI_LEXER
 #include "SciLexer.h"
 #endif
+#include "StringCopy.h"
 #include "SplitVector.h"
 #include "Partitioning.h"
 #include "RunStyles.h"
@@ -45,12 +47,14 @@
 #include "ViewStyle.h"
 #include "Decoration.h"
 #include "CharClassify.h"
+#include "CaseFolder.h"
 #include "Document.h"
 #include "Selection.h"
 #include "PositionCache.h"
 #include "Editor.h"
 #include "ScintillaBase.h"
 #include "UniConversion.h"
+#include "CaseConvert.h"
 
 #include "scintilla-marshal.h"
 
@@ -86,15 +90,6 @@ static GdkWindow *WindowFromWidget(GtkWidget *w) {
 #endif
 }
 
-static GdkWindow *PWindow(const Window &w) {
-	GtkWidget *widget = reinterpret_cast<GtkWidget *>(w.GetID());
-#if GTK_CHECK_VERSION(3,0,0)
-	return gtk_widget_get_window(widget);
-#else
-	return widget->window;
-#endif
-}
-
 #ifdef _MSC_VER
 // Constant conditional expressions are because of GTK+ headers
 #pragma warning(disable: 4127)
@@ -108,6 +103,15 @@ static GdkWindow *PWindow(const Window &w) {
 using namespace Scintilla;
 #endif
 
+static GdkWindow *PWindow(const Window &w) {
+	GtkWidget *widget = reinterpret_cast<GtkWidget *>(w.GetID());
+#if GTK_CHECK_VERSION(3,0,0)
+	return gtk_widget_get_window(widget);
+#else
+	return widget->window;
+#endif
+}
+
 extern std::string UTF8FromLatin1(const char *s, int len);
 
 class ScintillaGTK : public ScintillaBase {
@@ -117,12 +121,12 @@ class ScintillaGTK : public ScintillaBase {
 	Window scrollbarh;
 	GtkAdjustment *adjustmentv;
 	GtkAdjustment *adjustmenth;
-	int scrollBarWidth;
-	int scrollBarHeight;
+	int verticalScrollBarWidth;
+	int horizontalScrollBarHeight;
 
 	SelectionText primary;
 
-	GdkEventButton evbtn;
+	GdkEventButton *evbtn;
 	bool capturedMouse;
 	bool dragWasDropped;
 	int lastKey;
@@ -162,7 +166,7 @@ class ScintillaGTK : public ScintillaBase {
 	ScintillaGTK &operator=(const ScintillaGTK &);
 
 public:
-	ScintillaGTK(_ScintillaObject *sci_);
+	explicit ScintillaGTK(_ScintillaObject *sci_);
 	virtual ~ScintillaGTK();
 	static void ClassInit(OBJECT_CLASS* object_class, GtkWidgetClass *widget_class, GtkContainerClass *container_class);
 private:
@@ -172,7 +176,7 @@ private:
 	virtual bool DragThreshold(Point ptStart, Point ptNow);
 	virtual void StartDrag();
 	int TargetAsUTF8(char *text);
-	int EncodedFromUTF8(char *utf8, char *encoded);
+	int EncodedFromUTF8(char *utf8, char *encoded) const;
 	virtual bool ValidCodePage(int codePage) const;
 public: 	// Public for scintilla_send_message
 	virtual sptr_t WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
@@ -231,8 +235,10 @@ private:
 	gint FocusOutThis(GtkWidget *widget);
 	static gint FocusOut(GtkWidget *widget, GdkEventFocus *event);
 	static void SizeRequest(GtkWidget *widget, GtkRequisition *requisition);
+#if GTK_CHECK_VERSION(3,0,0)
 	static void GetPreferredWidth(GtkWidget *widget, gint *minimalWidth, gint *naturalWidth);
 	static void GetPreferredHeight(GtkWidget *widget, gint *minimalHeight, gint *naturalHeight);
+#endif
 	static void SizeAllocate(GtkWidget *widget, GtkAllocation *allocation);
 #if GTK_CHECK_VERSION(3,0,0)
 	gboolean DrawTextThis(cairo_t *cr);
@@ -333,14 +339,14 @@ static const GtkTargetEntry clipboardCopyTargets[] = {
 	{ (gchar *) "UTF8_STRING", 0, TARGET_UTF8_STRING },
 	{ (gchar *) "STRING", 0, TARGET_STRING },
 };
-static const gint nClipboardCopyTargets = sizeof(clipboardCopyTargets) / sizeof(clipboardCopyTargets[0]);
+static const gint nClipboardCopyTargets = ELEMENTS(clipboardCopyTargets);
 
 static const GtkTargetEntry clipboardPasteTargets[] = {
 	{ (gchar *) "text/uri-list", 0, TARGET_URI },
 	{ (gchar *) "UTF8_STRING", 0, TARGET_UTF8_STRING },
 	{ (gchar *) "STRING", 0, TARGET_STRING },
 };
-static const gint nClipboardPasteTargets = sizeof(clipboardPasteTargets) / sizeof(clipboardPasteTargets[0]);
+static const gint nClipboardPasteTargets = ELEMENTS(clipboardPasteTargets);
 
 static GtkWidget *PWidget(Window &w) {
 	return reinterpret_cast<GtkWidget *>(w.GetID());
@@ -353,8 +359,8 @@ static ScintillaGTK *ScintillaFromWidget(GtkWidget *widget) {
 
 ScintillaGTK::ScintillaGTK(_ScintillaObject *sci_) :
 		adjustmentv(0), adjustmenth(0),
-		scrollBarWidth(30), scrollBarHeight(30),
-		capturedMouse(false), dragWasDropped(false),
+		verticalScrollBarWidth(30), horizontalScrollBarHeight(30),
+		evbtn(0), capturedMouse(false), dragWasDropped(false),
 		lastKey(0), rectangularSelectionModifier(SCMOD_CTRL), parentClass(0),
 		im_context(NULL),
 		lastWheelMouseDirection(0),
@@ -392,6 +398,10 @@ ScintillaGTK::ScintillaGTK(_ScintillaObject *sci_) :
 
 ScintillaGTK::~ScintillaGTK() {
 	g_idle_remove_by_data(this);
+	if (evbtn) {
+		gdk_event_free(reinterpret_cast<GdkEvent *>(evbtn));
+		evbtn = 0;
+	}
 }
 
 static void UnRefCursor(GdkCursor *cursor) {
@@ -673,6 +683,8 @@ void ScintillaGTK::SizeRequest(GtkWidget *widget, GtkRequisition *requisition) {
 #endif
 }
 
+#if GTK_CHECK_VERSION(3,0,0)
+
 void ScintillaGTK::GetPreferredWidth(GtkWidget *widget, gint *minimalWidth, gint *naturalWidth) {
 	GtkRequisition requisition;
 	SizeRequest(widget, &requisition);
@@ -684,6 +696,8 @@ void ScintillaGTK::GetPreferredHeight(GtkWidget *widget, gint *minimalHeight, gi
 	SizeRequest(widget, &requisition);
 	*minimalHeight = *naturalHeight = requisition.height;
 }
+
+#endif
 
 void ScintillaGTK::SizeAllocate(GtkWidget *widget, GtkAllocation *allocation) {
 	ScintillaGTK *sciThis = ScintillaFromWidget(widget);
@@ -824,17 +838,18 @@ bool ScintillaGTK::DragThreshold(Point ptStart, Point ptNow) {
 }
 
 void ScintillaGTK::StartDrag() {
+	PLATFORM_ASSERT(evbtn != 0);
 	dragWasDropped = false;
 	inDragDrop = ddDragging;
 	GtkTargetList *tl = gtk_target_list_new(clipboardCopyTargets, nClipboardCopyTargets);
 	gtk_drag_begin(GTK_WIDGET(PWidget(wMain)),
 	               tl,
 	               static_cast<GdkDragAction>(GDK_ACTION_COPY | GDK_ACTION_MOVE),
-	               evbtn.button,
-	               reinterpret_cast<GdkEvent *>(&evbtn));
+	               evbtn->button,
+	               reinterpret_cast<GdkEvent *>(evbtn));
 }
 
-static std::string ConvertText(char *s, size_t len, const char *charSetDest,
+static std::string ConvertText(const char *s, size_t len, const char *charSetDest,
 	const char *charSetSource, bool transliterations, bool silent=false) {
 	// s is not const because of different versions of iconv disagreeing about const
 	std::string destForm;
@@ -842,7 +857,8 @@ static std::string ConvertText(char *s, size_t len, const char *charSetDest,
 	if (conv) {
 		size_t outLeft = len*3+1;
 		destForm = std::string(outLeft, '\0');
-		char *pin = s;
+		// g_iconv does not actually write to its input argument so safe to cast away const
+		char *pin = const_cast<char *>(s);
 		size_t inLeft = len;
 		char *putf = &destForm[0];
 		char *pout = putf;
@@ -851,10 +867,10 @@ static std::string ConvertText(char *s, size_t len, const char *charSetDest,
 			if (!silent) {
 				if (len == 1)
 					fprintf(stderr, "iconv %s->%s failed for %0x '%s'\n",
-						charSetSource, charSetDest, (unsigned char)(*s), static_cast<char *>(s));
+						charSetSource, charSetDest, (unsigned char)(*s), s);
 				else
 					fprintf(stderr, "iconv %s->%s failed for %s\n",
-						charSetSource, charSetDest, static_cast<char *>(s));
+						charSetSource, charSetDest, s);
 			}
 			destForm = std::string();
 		} else {
@@ -895,7 +911,7 @@ int ScintillaGTK::TargetAsUTF8(char *text) {
 
 // Translates a nul terminated UTF8 string into the document encoding.
 // Return the length of the result in bytes.
-int ScintillaGTK::EncodedFromUTF8(char *utf8, char *encoded) {
+int ScintillaGTK::EncodedFromUTF8(char *utf8, char *encoded) const {
 	int inputLength = (lengthForEncode >= 0) ? lengthForEncode : strlen(utf8);
 	if (IsUnicodeMode()) {
 		if (encoded) {
@@ -1080,9 +1096,9 @@ void ScintillaGTK::FullPaint() {
 PRectangle ScintillaGTK::GetClientRectangle() {
 	PRectangle rc = wMain.GetClientPosition();
 	if (verticalScrollBarVisible)
-		rc.right -= scrollBarWidth;
-	if (horizontalScrollBarVisible && (wrapState == eWrapNone))
-		rc.bottom -= scrollBarHeight;
+		rc.right -= verticalScrollBarWidth;
+	if (horizontalScrollBarVisible && !Wrapping())
+		rc.bottom -= horizontalScrollBarHeight;
 	// Move to origin
 	rc.right -= rc.left;
 	rc.bottom -= rc.top;
@@ -1111,7 +1127,7 @@ void ScintillaGTK::SetVerticalScrollPos() {
 
 void ScintillaGTK::SetHorizontalScrollPos() {
 	DwellEnd(true);
-	gtk_adjustment_set_value(GTK_ADJUSTMENT(adjustmenth), xOffset / 2);
+	gtk_adjustment_set_value(GTK_ADJUSTMENT(adjustmenth), xOffset);
 }
 
 bool ScintillaGTK::ModifyScrollBars(int nMax, int nPage) {
@@ -1193,6 +1209,7 @@ void ScintillaGTK::NotifyFocus(bool focus) {
 	g_signal_emit(G_OBJECT(sci), scintilla_signals[COMMAND_SIGNAL], 0,
 	                Platform::LongFromTwoShorts
 					(GetCtrlID(), focus ? SCEN_SETFOCUS : SCEN_KILLFOCUS), PWidget(wMain));
+	Editor::NotifyFocus(focus);
 }
 
 void ScintillaGTK::NotifyParent(SCNotification scn) {
@@ -1203,7 +1220,7 @@ void ScintillaGTK::NotifyParent(SCNotification scn) {
 }
 
 void ScintillaGTK::NotifyKey(int key, int modifiers) {
-	SCNotification scn = {0};
+	SCNotification scn = {};
 	scn.nmhdr.code = SCN_KEY;
 	scn.ch = key;
 	scn.modifiers = modifiers;
@@ -1212,7 +1229,7 @@ void ScintillaGTK::NotifyKey(int key, int modifiers) {
 }
 
 void ScintillaGTK::NotifyURIDropped(const char *list) {
-	SCNotification scn = {0};
+	SCNotification scn = {};
 	scn.nmhdr.code = SCN_URIDROPPED;
 	scn.text = list;
 
@@ -1225,33 +1242,10 @@ const char *ScintillaGTK::CharacterSetID() const {
 	return ::CharacterSetID(vs.styles[STYLE_DEFAULT].characterSet);
 }
 
-class CaseFolderUTF8 : public CaseFolderTable {
-public:
-	CaseFolderUTF8() {
-		StandardASCII();
-	}
-	virtual size_t Fold(char *folded, size_t sizeFolded, const char *mixed, size_t lenMixed) {
-		if ((lenMixed == 1) && (sizeFolded > 0)) {
-			folded[0] = mapping[static_cast<unsigned char>(mixed[0])];
-			return 1;
-		} else {
-			gchar *mapped = g_utf8_casefold(mixed, lenMixed);
-			size_t lenMapped = strlen(mapped);
-			if (lenMapped < sizeFolded) {
-				memcpy(folded, mapped,  lenMapped);
-			} else {
-				lenMapped = 0;
-			}
-			g_free(mapped);
-			return lenMapped;
-		}
-	}
-};
-
 class CaseFolderDBCS : public CaseFolderTable {
 	const char *charSet;
 public:
-	CaseFolderDBCS(const char *charSet_) : charSet(charSet_) {
+	explicit CaseFolderDBCS(const char *charSet_) : charSet(charSet_) {
 		StandardASCII();
 	}
 	virtual size_t Fold(char *folded, size_t sizeFolded, const char *mixed, size_t lenMixed) {
@@ -1259,7 +1253,7 @@ public:
 			folded[0] = mapping[static_cast<unsigned char>(mixed[0])];
 			return 1;
 		} else if (*charSet) {
-			std::string sUTF8 = ConvertText(const_cast<char *>(mixed), lenMixed,
+			std::string sUTF8 = ConvertText(mixed, lenMixed,
 				"UTF-8", charSet, false);
 			if (!sUTF8.empty()) {
 				gchar *mapped = g_utf8_casefold(sUTF8.c_str(), sUTF8.length());
@@ -1282,7 +1276,7 @@ public:
 
 CaseFolder *ScintillaGTK::CaseFolderForEncoding() {
 	if (pdoc->dbcsCodePage == SC_CP_UTF8) {
-		return new CaseFolderUTF8();
+		return new CaseFolderUnicode();
 	} else {
 		const char *charSetBuffer = CharacterSetID();
 		if (charSetBuffer) {
@@ -1336,20 +1330,25 @@ struct CaseMapper {
 }
 
 std::string ScintillaGTK::CaseMapString(const std::string &s, int caseMapping) {
-	if (s.size() == 0)
-		return std::string();
-
-	if (caseMapping == cmSame)
+	if ((s.size() == 0) || (caseMapping == cmSame))
 		return s;
+
+	if (IsUnicodeMode()) {
+		std::string retMapped(s.length() * maxExpansionCaseConversion, 0);
+		size_t lenMapped = CaseConvertString(&retMapped[0], retMapped.length(), s.c_str(), s.length(),
+			(caseMapping == cmUpper) ? CaseConversionUpper : CaseConversionLower);
+		retMapped.resize(lenMapped);
+		return retMapped;
+	}
 
 	const char *charSetBuffer = CharacterSetID();
 
-	if (IsUnicodeMode() || !*charSetBuffer) {
+	if (!*charSetBuffer) {
 		CaseMapper mapper(s, caseMapping == cmUpper);
 		return std::string(mapper.mapped, strlen(mapper.mapped));
 	} else {
 		// Change text to UTF-8
-		std::string sUTF8 = ConvertText(const_cast<char *>(s.c_str()), s.length(),
+		std::string sUTF8 = ConvertText(s.c_str(), s.length(),
 			"UTF-8", charSetBuffer, false);
 		CaseMapper mapper(sUTF8, caseMapping == cmUpper);
 		return ConvertText(mapper.mapped, strlen(mapper.mapped), charSetBuffer, "UTF-8", false);
@@ -1443,14 +1442,14 @@ void ScintillaGTK::ClaimSelection() {
 		primarySelection = true;
 		gtk_selection_owner_set(GTK_WIDGET(PWidget(wMain)),
 		                        GDK_SELECTION_PRIMARY, GDK_CURRENT_TIME);
-		primary.Free();
+		primary.Clear();
 	} else if (OwnPrimarySelection()) {
 		primarySelection = true;
-		if (primary.s == NULL)
+		if (primary.Empty())
 			gtk_selection_owner_set(NULL, GDK_SELECTION_PRIMARY, GDK_CURRENT_TIME);
 	} else {
 		primarySelection = false;
-		primary.Free();
+		primary.Clear();
 	}
 }
 
@@ -1474,7 +1473,7 @@ void ScintillaGTK::GetGtkSelectionText(GtkSelectionData *selectionData, Selectio
 
 	// Return empty string if selection is not a string
 	if ((selectionTypeData != GDK_TARGET_STRING) && (selectionTypeData != atomUTF8)) {
-		selText.Copy("", 0, SC_CP_UTF8, 0, false, false);
+		selText.Clear();
 		return;
 	}
 
@@ -1492,21 +1491,22 @@ void ScintillaGTK::GetGtkSelectionText(GtkSelectionData *selectionData, Selectio
 	if (selectionTypeData == GDK_TARGET_STRING) {
 		if (IsUnicodeMode()) {
 			// Unknown encoding so assume in Latin1
-			dest = UTF8FromLatin1(dest.c_str(), len);
-			selText.Copy(dest.c_str(), dest.length(), SC_CP_UTF8, 0, selText.rectangular, false);
+			dest = UTF8FromLatin1(dest.c_str(), dest.length());
+			selText.Copy(dest, SC_CP_UTF8, 0, isRectangular, false);
 		} else {
 			// Assume buffer is in same encoding as selection
-			selText.Copy(dest.c_str(), dest.length(), pdoc->dbcsCodePage,
+			selText.Copy(dest, pdoc->dbcsCodePage,
 				vs.styles[STYLE_DEFAULT].characterSet, isRectangular, false);
 		}
 	} else {	// UTF-8
-		selText.Copy(dest.c_str(), dest.length(), SC_CP_UTF8, 0, isRectangular, false);
 		const char *charSetBuffer = CharacterSetID();
 		if (!IsUnicodeMode() && *charSetBuffer) {
 			// Convert to locale
-			dest = ConvertText(selText.s, selText.len, charSetBuffer, "UTF-8", true);
-			selText.Copy(dest.c_str(), dest.length(), pdoc->dbcsCodePage,
-				vs.styles[STYLE_DEFAULT].characterSet, selText.rectangular, false);
+			dest = ConvertText(dest.c_str(), dest.length(), charSetBuffer, "UTF-8", true);
+			selText.Copy(dest, pdoc->dbcsCodePage,
+				vs.styles[STYLE_DEFAULT].characterSet, isRectangular, false);
+		} else {
+			selText.Copy(dest, SC_CP_UTF8, 0, isRectangular, false);
 		}
 	}
 }
@@ -1533,9 +1533,9 @@ void ScintillaGTK::ReceivedSelection(GtkSelectionData *selection_data) {
 					sel.Range(sel.Main()).Start();
 
 				if (selText.rectangular) {
-					PasteRectangular(selStart, selText.s, selText.len);
+					PasteRectangular(selStart, selText.Data(), selText.Length());
 				} else {
-					InsertPaste(selStart, selText.s, selText.len);
+					InsertPaste(selStart, selText.Data(), selText.Length());
 				}
 				EnsureCaretVisible();
 			}
@@ -1554,12 +1554,12 @@ void ScintillaGTK::ReceivedDrop(GtkSelectionData *selection_data) {
 		const char *data = reinterpret_cast<const char *>(DataOfGSD(selection_data));
 		std::vector<char> drop(data, data + LengthOfGSD(selection_data));
 		drop.push_back('\0');
-		NotifyURIDropped(drop.data());
+		NotifyURIDropped(&drop[0]);
 	} else if ((TypeOfGSD(selection_data) == GDK_TARGET_STRING) || (TypeOfGSD(selection_data) == atomUTF8)) {
 		if (TypeOfGSD(selection_data) > 0) {
 			SelectionText selText;
 			GetGtkSelectionText(selection_data, selText);
-			DropAt(posDrop, selText.s, false, selText.rectangular);
+			DropAt(posDrop, selText.Data(), selText.Length(), false, selText.rectangular);
 		}
 	} else if (LengthOfGSD(selection_data) > 0) {
 		//~ fprintf(stderr, "ReceivedDrop other %p\n", static_cast<void *>(selection_data->type));
@@ -1576,9 +1576,9 @@ void ScintillaGTK::GetSelection(GtkSelectionData *selection_data, guint info, Se
 	// from code below
 	SelectionText *newline_normalized = NULL;
 	{
-		std::string tmpstr = Document::TransformLineEnds(text->s, text->len, SC_EOL_LF);
+		std::string tmpstr = Document::TransformLineEnds(text->Data(), text->Length(), SC_EOL_LF);
 		newline_normalized = new SelectionText();
-		newline_normalized->Copy(tmpstr.c_str(), tmpstr.length(), SC_CP_UTF8, 0, text->rectangular, false);
+		newline_normalized->Copy(tmpstr, SC_CP_UTF8, 0, text->rectangular, false);
 		text = newline_normalized;
 	}
 #endif
@@ -1588,9 +1588,9 @@ void ScintillaGTK::GetSelection(GtkSelectionData *selection_data, guint info, Se
 	if ((text->codePage != SC_CP_UTF8) && (info == TARGET_UTF8_STRING)) {
 		const char *charSet = ::CharacterSetID(text->characterSet);
 		if (*charSet) {
-			std::string tmputf = ConvertText(text->s, text->len, "UTF-8", charSet, false);
+			std::string tmputf = ConvertText(text->Data(), text->Length(), "UTF-8", charSet, false);
 			converted = new SelectionText();
-			converted->Copy(tmputf.c_str(), tmputf.length(), SC_CP_UTF8, 0, text->rectangular, false);
+			converted->Copy(tmputf, SC_CP_UTF8, 0, text->rectangular, false);
 			text = converted;
 		}
 	}
@@ -1602,8 +1602,8 @@ void ScintillaGTK::GetSelection(GtkSelectionData *selection_data, guint info, Se
 	// All other tested aplications behave benignly by ignoring the \0.
 	// The #if is here because on Windows cfColumnSelect clip entry is used
 	// instead as standard indicator of rectangularness (so no need to kludge)
-	const char *textData = text->s ? text->s : "";
-	int len = strlen(textData);
+	const char *textData = text->Data();
+	int len = text->Length();
 #if PLAT_GTK_WIN32 == 0
 	if (text->rectangular)
 		len++;
@@ -1650,7 +1650,7 @@ void ScintillaGTK::UnclaimSelection(GdkEventSelection *selection_event) {
 		if (selection_event->selection == GDK_SELECTION_PRIMARY) {
 			//Platform::DebugPrintf("UnclaimPrimarySelection\n");
 			if (!OwnPrimarySelection()) {
-				primary.Free();
+				primary.Clear();
 				primarySelection = false;
 				FullPaint();
 			}
@@ -1668,44 +1668,41 @@ void ScintillaGTK::Resize(int width, int height) {
 #if GTK_CHECK_VERSION(3,0,0)
 	GtkRequisition requisition;
 	gtk_widget_get_requisition(PWidget(scrollbarv), &requisition);
-	scrollBarWidth = requisition.width;
+	verticalScrollBarWidth = requisition.width;
 	gtk_widget_get_requisition(PWidget(scrollbarh), &requisition);
-	scrollBarHeight = requisition.height;
+	horizontalScrollBarHeight = requisition.height;
 #else
-	scrollBarWidth = GTK_WIDGET(PWidget(scrollbarv))->requisition.width;
-	scrollBarHeight = GTK_WIDGET(PWidget(scrollbarh))->requisition.height;
+	verticalScrollBarWidth = GTK_WIDGET(PWidget(scrollbarv))->requisition.width;
+	horizontalScrollBarHeight = GTK_WIDGET(PWidget(scrollbarh))->requisition.height;
 #endif
 
 	// These allocations should never produce negative sizes as they would wrap around to huge
 	// unsigned numbers inside GTK+ causing warnings.
-	bool showSBHorizontal = horizontalScrollBarVisible && (wrapState == eWrapNone);
-	int horizontalScrollBarHeight = scrollBarHeight;
-	if (!showSBHorizontal)
-		horizontalScrollBarHeight = 0;
+	bool showSBHorizontal = horizontalScrollBarVisible && !Wrapping();
 
 	GtkAllocation alloc;
 	if (showSBHorizontal) {
 		gtk_widget_show(GTK_WIDGET(PWidget(scrollbarh)));
 		alloc.x = 0;
-		alloc.y = height - scrollBarHeight;
-		alloc.width = Platform::Maximum(1, width - scrollBarWidth);
+		alloc.y = height - horizontalScrollBarHeight;
+		alloc.width = Platform::Maximum(1, width - verticalScrollBarWidth);
 		alloc.height = horizontalScrollBarHeight;
 		gtk_widget_size_allocate(GTK_WIDGET(PWidget(scrollbarh)), &alloc);
 	} else {
 		gtk_widget_hide(GTK_WIDGET(PWidget(scrollbarh)));
+		horizontalScrollBarHeight = 0; // in case horizontalScrollBarVisible is true.
 	}
 
 	if (verticalScrollBarVisible) {
 		gtk_widget_show(GTK_WIDGET(PWidget(scrollbarv)));
-		alloc.x = width - scrollBarWidth;
+		alloc.x = width - verticalScrollBarWidth;
 		alloc.y = 0;
-		alloc.width = scrollBarWidth;
-		alloc.height = Platform::Maximum(1, height - scrollBarHeight);
-		if (!showSBHorizontal)
-			alloc.height += scrollBarWidth-1;
+		alloc.width = verticalScrollBarWidth;
+		alloc.height = Platform::Maximum(1, height - horizontalScrollBarHeight);
 		gtk_widget_size_allocate(GTK_WIDGET(PWidget(scrollbarv)), &alloc);
 	} else {
 		gtk_widget_hide(GTK_WIDGET(PWidget(scrollbarv)));
+		verticalScrollBarWidth = 0;
 	}
 	if (IS_WIDGET_MAPPED(PWidget(wMain))) {
 		ChangeSize();
@@ -1713,12 +1710,8 @@ void ScintillaGTK::Resize(int width, int height) {
 
 	alloc.x = 0;
 	alloc.y = 0;
-	alloc.width = Platform::Maximum(1, width - scrollBarWidth);
-	alloc.height = Platform::Maximum(1, height - scrollBarHeight);
-	if (!showSBHorizontal)
-		alloc.height += scrollBarHeight;
-	if (!verticalScrollBarVisible)
-		alloc.width += scrollBarWidth;
+	alloc.width = Platform::Maximum(1, width - verticalScrollBarWidth);
+	alloc.height = Platform::Maximum(1, height - horizontalScrollBarHeight);
 	gtk_widget_size_allocate(GTK_WIDGET(PWidget(wText)), &alloc);
 }
 
@@ -1761,7 +1754,11 @@ gint ScintillaGTK::PressThis(GdkEventButton *event) {
 		if (event->type != GDK_BUTTON_PRESS)
 			return FALSE;
 
-		evbtn = *event;
+		if (evbtn) {
+			gdk_event_free(reinterpret_cast<GdkEvent *>(evbtn));
+			evbtn = 0;
+		}
+		evbtn = reinterpret_cast<GdkEventButton *>(gdk_event_copy(reinterpret_cast<GdkEvent *>(event)));
 		Point pt;
 		pt.x = int(event->x);
 		pt.y = int(event->y);
@@ -1773,21 +1770,28 @@ gint ScintillaGTK::PressThis(GdkEventButton *event) {
 			return FALSE;
 		}
 
+		bool shift = (event->state & GDK_SHIFT_MASK) != 0;
 		bool ctrl = (event->state & GDK_CONTROL_MASK) != 0;
+		// On X, instead of sending literal modifiers use the user specified
+		// modifier, defaulting to control instead of alt.
+		// This is because most X window managers grab alt + click for moving
+		bool alt = (event->state & modifierTranslated(rectangularSelectionModifier)) != 0;
 
 		gtk_widget_grab_focus(PWidget(wMain));
 		if (event->button == 1) {
-			// On X, instead of sending literal modifiers use the user specified
-			// modifier, defaulting to control instead of alt.
-			// This is because most X window managers grab alt + click for moving
-			ButtonDown(pt, event->time,
-			        (event->state & GDK_SHIFT_MASK) != 0,
-			        (event->state & GDK_CONTROL_MASK) != 0,
-			        (event->state & modifierTranslated(rectangularSelectionModifier)) != 0);
+#if PLAT_GTK_MACOSX
+			bool meta = ctrl;
+			// GDK reports the Command modifer key as GDK_MOD2_MASK for button events,
+			// not GDK_META_MASK like in key events.
+			ctrl = (event->state & GDK_MOD2_MASK) != 0;
+#else
+			bool meta = false;
+#endif
+			ButtonDownWithModifiers(pt, event->time, ModifierFlags(shift, ctrl, alt, meta));
 		} else if (event->button == 2) {
 			// Grab the primary selection if it exists
 			SelectionPosition pos = SPositionFromLocation(pt, false, false, UserVirtualSpace());
-			if (OwnPrimarySelection() && primary.s == NULL)
+			if (OwnPrimarySelection() && primary.Empty())
 				CopySelectionRange(&primary);
 
 			sel.Clear();
@@ -1811,13 +1815,13 @@ gint ScintillaGTK::PressThis(GdkEventButton *event) {
 		} else if (event->button == 4) {
 			// Wheel scrolling up (only GTK 1.x does it this way)
 			if (ctrl)
-				SetAdjustmentValue(adjustmenth, (xOffset / 2) - 6);
+				SetAdjustmentValue(adjustmenth, xOffset - 6);
 			else
 				SetAdjustmentValue(adjustmentv, topLine - 3);
 		} else if (event->button == 5) {
 			// Wheel scrolling down (only GTK 1.x does it this way)
 			if (ctrl)
-				SetAdjustmentValue(adjustmenth, (xOffset / 2) + 6);
+				SetAdjustmentValue(adjustmenth, xOffset + 6);
 			else
 				SetAdjustmentValue(adjustmentv, topLine + 3);
 		}
@@ -1850,7 +1854,7 @@ gint ScintillaGTK::MouseRelease(GtkWidget *widget, GdkEventButton *event) {
 				// If mouse released on scroll bar then the position is relative to the
 				// scrollbar, not the drawing window so just repeat the most recent point.
 				pt = sciThis->ptMouseLast;
-			sciThis->ButtonUp(pt, event->time, (event->state & 4) != 0);
+			sciThis->ButtonUp(pt, event->time, (event->state & GDK_CONTROL_MASK) != 0);
 		}
 	} catch (...) {
 		sciThis->errorStatus = SC_STATUS_FAILURE;
@@ -1954,7 +1958,7 @@ gint ScintillaGTK::Motion(GtkWidget *widget, GdkEventMotion *event) {
 		GdkModifierType state;
 		if (event->is_hint) {
 #if GTK_CHECK_VERSION(3,0,0)
-			gdk_window_get_device_position(event->window, 
+			gdk_window_get_device_position(event->window,
 				event->device, &x, &y, &state);
 #else
 			gdk_window_get_pointer(event->window, &x, &y, &state);
@@ -1967,7 +1971,10 @@ gint ScintillaGTK::Motion(GtkWidget *widget, GdkEventMotion *event) {
 		//Platform::DebugPrintf("Move %x %x %d %c %d %d\n",
 		//	sciThis,event->window,event->time,event->is_hint? 'h' :'.', x, y);
 		Point pt(x, y);
-		sciThis->ButtonMove(pt);
+		int modifiers = ((event->state & GDK_SHIFT_MASK) != 0 ? SCI_SHIFT : 0) |
+		                ((event->state & GDK_CONTROL_MASK) != 0 ? SCI_CTRL : 0) |
+		                ((event->state & modifierTranslated(sciThis->rectangularSelectionModifier)) != 0 ? SCI_ALT : 0);
+		sciThis->ButtonMoveWithModifiers(pt, modifiers);
 	} catch (...) {
 		sciThis->errorStatus = SC_STATUS_FAILURE;
 	}
@@ -2337,9 +2344,12 @@ void ScintillaGTK::RealizeText(GtkWidget *widget, void*) {
 	}
 }
 
+static GObjectClass *scintilla_class_parent_class;
+
 void ScintillaGTK::Destroy(GObject *object) {
 	try {
 		ScintillaObject *scio = reinterpret_cast<ScintillaObject *>(object);
+
 		// This avoids a double destruction
 		if (!scio->pscin)
 			return;
@@ -2349,6 +2359,7 @@ void ScintillaGTK::Destroy(GObject *object) {
 
 		delete sciThis;
 		scio->pscin = 0;
+		scintilla_class_parent_class->finalize(object);
 	} catch (...) {
 		// Its dead so nowhere to save the status
 	}
@@ -2511,9 +2522,9 @@ void ScintillaGTK::ScrollSignal(GtkAdjustment *adj, ScintillaGTK *sciThis) {
 void ScintillaGTK::ScrollHSignal(GtkAdjustment *adj, ScintillaGTK *sciThis) {
 	try {
 #if GTK_CHECK_VERSION(3,0,0)
-		sciThis->HorizontalScrollTo(static_cast<int>(gtk_adjustment_get_value(adj) * 2));
+		sciThis->HorizontalScrollTo(static_cast<int>(gtk_adjustment_get_value(adj)));
 #else
-		sciThis->HorizontalScrollTo(static_cast<int>(adj->value * 2));
+		sciThis->HorizontalScrollTo(static_cast<int>(adj->value));
 #endif
 	} catch (...) {
 		sciThis->errorStatus = SC_STATUS_FAILURE;
@@ -2533,7 +2544,7 @@ void ScintillaGTK::SelectionGet(GtkWidget *widget,
 	try {
 		//Platform::DebugPrintf("Selection get\n");
 		if (SelectionOfGSD(selection_data) == GDK_SELECTION_PRIMARY) {
-			if (sciThis->primary.s == NULL) {
+			if (sciThis->primary.Empty()) {
 				sciThis->CopySelectionRange(&sciThis->primary);
 			}
 			sciThis->GetSelection(selection_data, info, &sciThis->primary);
@@ -2911,7 +2922,7 @@ static void scintilla_class_init(ScintillaClass *klass) {
 
 		klass->command = NULL;
 		klass->notify = NULL;
-
+		scintilla_class_parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(klass));
 		ScintillaGTK::ClassInit(object_class, widget_class, container_class);
 	} catch (...) {
 	}
@@ -2930,7 +2941,10 @@ static void scintilla_init(ScintillaObject *sci) {
 }
 
 GtkWidget* scintilla_new() {
-	return GTK_WIDGET(g_object_new(scintilla_get_type(), NULL));
+	GtkWidget *widget = GTK_WIDGET(g_object_new(scintilla_get_type(), NULL));
+	gtk_widget_set_direction(widget, GTK_TEXT_DIR_LTR);
+
+	return widget;
 }
 
 void scintilla_set_id(ScintillaObject *sci, uptr_t id) {

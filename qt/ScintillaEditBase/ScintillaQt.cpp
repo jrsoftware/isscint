@@ -49,6 +49,7 @@ ScintillaQt::ScintillaQt(QAbstractScrollArea *parent)
 ScintillaQt::~ScintillaQt()
 {
 	SetTicking(false);
+	SetIdle(false);
 }
 
 void ScintillaQt::tick()
@@ -73,7 +74,7 @@ static const QString sScintillaRecMimeType("text/x-scintilla.utf16-plain-text.re
 static const QString sMimeRectangularMarker("text/x-rectangular-marker");
 #endif
 
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC) && QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 
 class ScintillaRectangularMime : public QMacPasteboardMime {
 public:
@@ -132,7 +133,7 @@ void ScintillaQt::Initialise()
 	rectangularSelectionModifier = SCMOD_CTRL;
 #endif
 
-#ifdef Q_OS_MAC
+#if defined(Q_OS_MAC) && QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 	if (!singletonMime) {
 		singletonMime = new ScintillaRectangularMime();
 
@@ -171,11 +172,11 @@ bool ScintillaQt::DragThreshold(Point ptStart, Point ptNow)
 static QString StringFromSelectedText(const SelectionText &selectedText)
 {
 	if (selectedText.codePage == SC_CP_UTF8) {
-		return QString::fromUtf8(selectedText.s, selectedText.len-1);
+		return QString::fromUtf8(selectedText.Data(), static_cast<int>(selectedText.Length()));
 	} else {
 		QTextCodec *codec = QTextCodec::codecForName(
 				CharacterSetID(selectedText.characterSet));
-		return codec->toUnicode(selectedText.s, selectedText.len-1);
+		return codec->toUnicode(selectedText.Data(), static_cast<int>(selectedText.Length()));
 	}
 }
 
@@ -293,7 +294,7 @@ void ScintillaQt::ReconfigureScrollBars()
 		scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	}
 
-	if (horizontalScrollBarVisible && (wrapState == eWrapNone)) {
+	if (horizontalScrollBarVisible && !Wrapping()) {
 		scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 	} else {
 		scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -341,7 +342,7 @@ void ScintillaQt::PasteFromMode(QClipboard::Mode clipboardMode_)
 	int len = utext.length();
 	std::string dest = Document::TransformLineEnds(utext, len, pdoc->eolMode);
 	SelectionText selText;
-	selText.Copy(dest.c_str(), dest.length(), pdoc->dbcsCodePage, CharacterSetOfDocument(), isRectangular, false);
+	selText.Copy(dest, pdoc->dbcsCodePage, CharacterSetOfDocument(), isRectangular, false);
 
 	UndoGroup ug(pdoc);
 	ClearSelection(multiPasteMode == SC_MULTIPASTE_EACH);
@@ -349,9 +350,9 @@ void ScintillaQt::PasteFromMode(QClipboard::Mode clipboardMode_)
 		sel.Rectangular().Start() :
 		sel.Range(sel.Main()).Start();
 	if (selText.rectangular) {
-		PasteRectangular(selStart, selText.s, selText.len);
+		PasteRectangular(selStart, selText.Data(), static_cast<int>(selText.Length()));
 	} else {
-		InsertPaste(selStart, selText.s, selText.len);
+		InsertPaste(selStart, selText.Data(), static_cast<int>(selText.Length()));
 	}
 	EnsureCaretVisible();
 }
@@ -391,6 +392,8 @@ void ScintillaQt::NotifyFocus(bool focus)
 			Platform::LongFromTwoShorts
 					(GetCtrlID(), focus ? SCEN_SETFOCUS : SCEN_KILLFOCUS),
 			reinterpret_cast<sptr_t>(wMain.GetID()));
+
+	Editor::NotifyFocus(focus);
 }
 
 void ScintillaQt::NotifyParent(SCNotification scn)
@@ -488,30 +491,6 @@ QByteArray ScintillaQt::BytesForDocument(const QString &text) const
 }
 
 
-class CaseFolderUTF8 : public CaseFolderTable {
-public:
-	CaseFolderUTF8() {
-		StandardASCII();
-	}
-	virtual size_t Fold(char *folded, size_t sizeFolded, const char *mixed, size_t lenMixed) {
-		if ((lenMixed == 1) && (sizeFolded > 0)) {
-			folded[0] = mapping[static_cast<unsigned char>(mixed[0])];
-			return 1;
-		} else {
-			QString su = QString::fromUtf8(mixed, lenMixed);
-			QString suFolded = su.toCaseFolded();
-			QByteArray bytesFolded = suFolded.toUtf8();
-			if (bytesFolded.length() < static_cast<int>(sizeFolded)) {
-				memcpy(folded, bytesFolded,  bytesFolded.length());
-				return bytesFolded.length();
-			} else {
-				folded[0] = '\0';
-				return 0;
-			}
-		}
-	}
-};
-
 class CaseFolderDBCS : public CaseFolderTable {
 	QTextCodec *codec;
 public:
@@ -523,7 +502,7 @@ public:
 			folded[0] = mapping[static_cast<unsigned char>(mixed[0])];
 			return 1;
 		} else if (codec) {
-			QString su = codec->toUnicode(mixed, lenMixed);
+			QString su = codec->toUnicode(mixed, static_cast<int>(lenMixed));
 			QString suFolded = su.toCaseFolded();
 			QByteArray bytesFolded = codec->fromUnicode(suFolded);
 
@@ -541,7 +520,7 @@ public:
 CaseFolder *ScintillaQt::CaseFolderForEncoding()
 {
 	if (pdoc->dbcsCodePage == SC_CP_UTF8) {
-		return new CaseFolderUTF8();
+		return new CaseFolderUnicode();
 	} else {
 		const char *charSetBuffer = CharacterSetIDOfDocument();
 		if (charSetBuffer) {
@@ -571,20 +550,19 @@ CaseFolder *ScintillaQt::CaseFolderForEncoding()
 
 std::string ScintillaQt::CaseMapString(const std::string &s, int caseMapping)
 {
-	if (s.size() == 0)
-		return std::string();
-
-	if (caseMapping == cmSame)
+	if ((s.size() == 0) || (caseMapping == cmSame))
 		return s;
 
-	QTextCodec *codec = 0;
-	QString text;
 	if (IsUnicodeMode()) {
-		text = QString::fromUtf8(s.c_str(), s.length());
-	} else {
-		codec = QTextCodec::codecForName(CharacterSetIDOfDocument());
-		text = codec->toUnicode(s.c_str(), s.length());
+		std::string retMapped(s.length() * maxExpansionCaseConversion, 0);
+		size_t lenMapped = CaseConvertString(&retMapped[0], retMapped.length(), s.c_str(), s.length(),
+			(caseMapping == cmUpper) ? CaseConversionUpper : CaseConversionLower);
+		retMapped.resize(lenMapped);
+		return retMapped;
 	}
+
+	QTextCodec *codec = QTextCodec::codecForName(CharacterSetIDOfDocument());
+	QString text = codec->toUnicode(s.c_str(), static_cast<int>(s.length()));
 
 	if (caseMapping == cmUpper) {
 		text = text.toUpper();
@@ -613,7 +591,7 @@ void ScintillaQt::StartDrag()
 {
 	inDragDrop = ddDragging;
 	dropWentOutside = true;
-	if (drag.len) {
+	if (drag.Length()) {
 		QMimeData *mimeData = new QMimeData;
 		QString sText = StringFromSelectedText(drag);
 		mimeData->setText(sText);
@@ -768,5 +746,5 @@ void ScintillaQt::Drop(const Point &point, const QMimeData *data, bool move)
 	SelectionPosition movePos = SPositionFromLocation(point,
 				false, false, UserVirtualSpace());
 
-	DropAt(movePos, dest.c_str(), move, rectangular);
+	DropAt(movePos, dest.c_str(), dest.length(), move, rectangular);
 }
