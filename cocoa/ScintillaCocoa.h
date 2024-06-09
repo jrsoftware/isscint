@@ -14,11 +14,11 @@
  */
 
 #include <stdlib.h>
-#include <string>
 #include <stdio.h>
-#include <ctype.h>
 #include <time.h>
+#include <ctype.h>
 
+#include <string>
 #include <vector>
 #include <map>
 
@@ -40,18 +40,18 @@
 #include "XPM.h"
 #include "LineMarker.h"
 #include "Style.h"
-#include "AutoComplete.h"
 #include "ViewStyle.h"
 #include "CharClassify.h"
 #include "Decoration.h"
 #include "CaseFolder.h"
 #include "Document.h"
+#include "CaseConvert.h"
 #include "Selection.h"
 #include "PositionCache.h"
 #include "Editor.h"
 
+#include "AutoComplete.h"
 #include "ScintillaBase.h"
-#include "CaseConvert.h"
 
 extern "C" NSString* ScintillaRecPboardType;
 
@@ -113,8 +113,10 @@ private:
 protected:
   Point GetVisibleOriginInMain();
   PRectangle GetClientRectangle();
+  virtual PRectangle GetClientDrawingRectangle();
   Point ConvertPoint(NSPoint point);
   virtual void RedrawRect(PRectangle rc);
+  virtual void DiscardOverdraw();
   virtual void Redraw();
 
   virtual void Initialise();
@@ -131,7 +133,6 @@ public:
   void RegisterNotifyCallback(intptr_t windowid, SciNotifyFunc callback);
   sptr_t WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
 
-  ScintillaView* TopContainer();
   NSScrollView* ScrollContainer();
   SCIContentView* ContentView();
 
@@ -144,6 +145,7 @@ public:
   bool SetIdle(bool on);
   void SetMouseCapture(bool on);
   bool HaveMouseCapture();
+  void WillDraw(NSRect rect);
   void ScrollText(int linesToMove);
   void SetVerticalScrollPos();
   void SetHorizontalScrollPos();
@@ -174,7 +176,7 @@ public:
 
   NSPoint GetCaretPosition();
 
-  static sptr_t DirectFunction(ScintillaCocoa *sciThis, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
+  static sptr_t DirectFunction(sptr_t ptr, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
 
   void TimerFired(NSTimer* timer);
   void IdleTimerFired();

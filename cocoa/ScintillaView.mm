@@ -228,6 +228,39 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor)
 //--------------------------------------------------------------------------------------------------
 
 /**
+ * Called before repainting.
+ */
+- (void) viewWillDraw
+{
+  const NSRect *rects;
+  NSInteger nRects = 0;
+  [self getRectsBeingDrawn:&rects count:&nRects];
+  if (nRects > 0) {
+    NSRect rectUnion = rects[0];
+    for (int i=0;i<nRects;i++) {
+      rectUnion = NSUnionRect(rectUnion, rects[i]);
+    }
+    mOwner.backend->WillDraw(rectUnion);
+  }
+  [super viewWillDraw];
+}
+
+//--------------------------------------------------------------------------------------------------
+
+/**
+ * Called before responsive scrolling overdraw.
+ */
+- (void) prepareContentInRect: (NSRect) rect
+{
+  mOwner.backend->WillDraw(rect);
+#if MAC_OS_X_VERSION_MAX_ALLOWED > 1080
+  [super prepareContentInRect: rect];
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+
+/**
  * Gets called by the runtime when the view needs repainting.
  */
 - (void) drawRect: (NSRect) rect
@@ -383,13 +416,7 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor)
 		// Its replacing a non-existent position so do nothing.
 		return;
 
-	if (replacementRange.length > 0)
-	{
-		[ScintillaView directCall: mOwner
-				  message: SCI_DELETERANGE
-				   wParam: replacementRange.location
-				   lParam: replacementRange.length];
-	}
+	[mOwner deleteRange: replacementRange];
 
 	NSString* newText = @"";
 	if ([aString isKindOfClass:[NSString class]])
@@ -459,13 +486,7 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor)
     mOwner.backend->SelectOnlyMainSelection();
   }
 
-  if (replacementRange.length > 0)
-  {
-    [ScintillaView directCall: mOwner
-		      message: SCI_DELETERANGE
-		       wParam: replacementRange.location
-		       lParam: replacementRange.length];
-  }
+  [mOwner deleteRange: replacementRange];
 
   // Note: Scintilla internally works almost always with bytes instead chars, so we need to take
   //       this into account when determining selection ranges and such.
@@ -532,11 +553,8 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor)
   if (mMarkedTextRange.length > 0)
   {
     // We have already marked text. Replace that.
-    [mOwner setGeneralProperty: SCI_SETSELECTIONSTART
-                     value: mMarkedTextRange.location];
-    [mOwner setGeneralProperty: SCI_SETSELECTIONEND
-                     value: mMarkedTextRange.location + mMarkedTextRange.length];
-    mOwner.backend->InsertText(@"");
+    [mOwner deleteRange: mMarkedTextRange];
+
     mMarkedTextRange = NSMakeRange(NSNotFound, 0);
 
     // Reenable undo action collection, after we are done with text composition.
@@ -1254,6 +1272,19 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor)
 //--------------------------------------------------------------------------------------------------
 
 /**
+ * Delete a range from the document.
+ */
+- (void) deleteRange: (NSRange) aRange
+{
+  if (aRange.length > 0)
+  {
+    [self message: SCI_DELETERANGE wParam: aRange.location lParam: aRange.length];
+  }
+}
+
+//--------------------------------------------------------------------------------------------------
+
+/**
  * Getter for the current text in raw form (no formatting information included).
  * If there is no text available an empty string is returned.
  */
@@ -1335,7 +1366,8 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor)
 + (sptr_t) directCall: (ScintillaView*) sender message: (unsigned int) message wParam: (uptr_t) wParam
                lParam: (sptr_t) lParam
 {
-  return ScintillaCocoa::DirectFunction(sender->mBackend, message, wParam, lParam);
+  return ScintillaCocoa::DirectFunction(
+    reinterpret_cast<sptr_t>(sender->mBackend), message, wParam, lParam);
 }
 
 - (sptr_t) message: (unsigned int) message wParam: (uptr_t) wParam lParam: (sptr_t) lParam
