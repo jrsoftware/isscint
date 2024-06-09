@@ -52,7 +52,7 @@ public:
 
 enum IndentView {ivNone, ivReal, ivLookForward, ivLookBoth};
 
-enum WhiteSpaceVisibility {wsInvisible=0, wsVisibleAlways=1, wsVisibleAfterIndent=2};
+enum WhiteSpaceVisibility {wsInvisible=0, wsVisibleAlways=1, wsVisibleAfterIndent=2, wsVisibleOnlyInIndent=3};
 
 typedef std::map<FontSpecification, FontRealised *> FontMap;
 
@@ -83,8 +83,11 @@ public:
 	LineMarker markers[MARKER_MAX + 1];
 	int largestMarkerHeight;
 	Indicator indicators[INDIC_MAX + 1];
+	unsigned int indicatorsDynamic;
+	unsigned int indicatorsSetFore;
 	int technology;
 	int lineHeight;
+	int lineOverlap;
 	unsigned int maxAscent;
 	unsigned int maxDescent;
 	XYPOSITION aveCharWidth;
@@ -111,6 +114,7 @@ public:
 	int leftMarginWidth;	///< Spacing margin on left of text
 	int rightMarginWidth;	///< Spacing margin on right of text
 	int maskInLine;	///< Mask for markers to be put into text because there is nowhere for them to go in margin
+	int maskDrawInText;	///< Mask for markers that always draw in text
 	MarginStyle ms[SC_MAX_MARGIN+1];
 	int fixedColumnWidth;	///< Total width of margins
 	bool marginInside;	///< true: margin included in text view, false: separate views
@@ -157,6 +161,7 @@ public:
 	ViewStyle();
 	ViewStyle(const ViewStyle &source);
 	~ViewStyle();
+	void CalculateMarginWidthAndMask();
 	void Init(size_t stylesSize_=256);
 	void Refresh(Surface &surface, int tabInChars);
 	void ReleaseAllExtendedStyles();
@@ -170,12 +175,17 @@ public:
 	bool ValidStyle(size_t styleIndex) const;
 	void CalcLargestMarkerHeight();
 	ColourOptional Background(int marksOfLine, bool caretActive, bool lineContainsCaret) const;
+	bool SelectionBackgroundDrawn() const;
+	bool WhitespaceBackgroundDrawn() const;
 	ColourDesired WrapColour() const;
+
 	bool SetWrapState(int wrapState_);
 	bool SetWrapVisualFlags(int wrapVisualFlags_);
 	bool SetWrapVisualFlagsLocation(int wrapVisualFlagsLocation_);
 	bool SetWrapVisualStartIndent(int wrapVisualStartIndent_);
 	bool SetWrapIndentMode(int wrapIndentMode_);
+
+	bool WhiteSpaceVisible(bool inIndent) const;
 
 private:
 	void AllocStyles(size_t sizeNew);

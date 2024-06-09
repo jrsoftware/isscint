@@ -19,13 +19,19 @@ LEXLIB=Lexers.lib
 
 LD=link
 
-CXXFLAGS=-Zi -TP -MP -W4 -EHsc -Zc:forScope -Zc:wchar_t -D_CRT_SECURE_NO_DEPRECATE=1
+!IFDEF SUPPORT_XP
+XP_DEFINE=-D_USING_V110_SDK71_
+XP_LINK=-SUBSYSTEM:WINDOWS,5.01
+!ENDIF
+
+CRTFLAGS=-D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1 -D_CRT_SECURE_NO_DEPRECATE=1 $(XP_DEFINE)
+CXXFLAGS=-Zi -TP -MP -W4 -EHsc -Zc:forScope -Zc:wchar_t $(CRTFLAGS)
 CXXDEBUG=-Od -MTd -DDEBUG
 CXXNDEBUG=-O1 -MT -DNDEBUG -GL
 NAME=-Fo
-LDFLAGS=-OPT:REF -LTCG -DEBUG
+LDFLAGS=-OPT:REF -LTCG -DEBUG $(XP_LINK)
 LDDEBUG=
-LIBS=KERNEL32.lib USER32.lib GDI32.lib IMM32.lib OLE32.LIB
+LIBS=KERNEL32.lib USER32.lib GDI32.lib IMM32.lib OLE32.LIB OLEAUT32.LIB
 NOLOGO=-nologo
 
 !IFDEF QUIET
@@ -37,6 +43,10 @@ LDFLAGS=$(LDFLAGS) $(NOLOGO)
 !IF [cl -c -nologo CheckD2D.cxx >NUL:]
 CXXFLAGS=$(CXXFLAGS) -DDISABLE_D2D
 !MESSAGE Direct2D is not available
+!ENDIF
+
+!IFDEF CXX11_REGEX
+CXXFLAGS=$(CXXFLAGS) -DCXX11_REGEX
 !ENDIF
 
 !IFDEF DEBUG
@@ -67,10 +77,13 @@ SHAREDOBJS=\
 	$(DIR_O)\ContractionState.obj \
 	$(DIR_O)\Decoration.obj \
 	$(DIR_O)\Document.obj \
+	$(DIR_O)\EditModel.obj \
 	$(DIR_O)\Editor.obj \
+	$(DIR_O)\EditView.obj \
 	$(DIR_O)\Indicator.obj \
 	$(DIR_O)\KeyMap.obj \
 	$(DIR_O)\LineMarker.obj \
+	$(DIR_O)\MarginView.obj \
 	$(DIR_O)\PerLine.obj \
 	$(DIR_O)\PlatWin.obj \
 	$(DIR_O)\PositionCache.obj \
@@ -81,7 +94,8 @@ SHAREDOBJS=\
 	$(DIR_O)\Style.obj \
 	$(DIR_O)\UniConversion.obj \
 	$(DIR_O)\ViewStyle.obj \
-	$(DIR_O)\XPM.obj
+	$(DIR_O)\XPM.obj \
+	$(DIR_O)\HanjaDic.obj \
 
 SOBJS=\
 	$(SHAREDOBJS) \
@@ -104,6 +118,8 @@ LEXOBJS=\
 	$(DIR_O)\LexBaan.obj \
 	$(DIR_O)\LexBash.obj \
 	$(DIR_O)\LexBasic.obj \
+	$(DIR_O)\LexBatch.obj \
+	$(DIR_O)\LexBibTeX.obj \
 	$(DIR_O)\LexBullant.obj \
 	$(DIR_O)\LexCaml.obj \
 	$(DIR_O)\LexCLW.obj \
@@ -116,11 +132,13 @@ LEXOBJS=\
 	$(DIR_O)\LexCsound.obj \
 	$(DIR_O)\LexCSS.obj \
 	$(DIR_O)\LexD.obj \
+	$(DIR_O)\LexDiff.obj \
 	$(DIR_O)\LexDMAP.obj \
 	$(DIR_O)\LexDMIS.obj \
 	$(DIR_O)\LexECL.obj \
 	$(DIR_O)\LexEiffel.obj \
 	$(DIR_O)\LexErlang.obj \
+	$(DIR_O)\LexErrorList.obj \
 	$(DIR_O)\LexEScript.obj \
 	$(DIR_O)\LexFlagship.obj \
 	$(DIR_O)\LexForth.obj \
@@ -128,6 +146,7 @@ LEXOBJS=\
 	$(DIR_O)\LexGAP.obj \
 	$(DIR_O)\LexGui4Cli.obj \
 	$(DIR_O)\LexHaskell.obj \
+	$(DIR_O)\LexHex.obj \
 	$(DIR_O)\LexHTML.obj \
 	$(DIR_O)\LexInno.obj \
 	$(DIR_O)\LexKix.obj \
@@ -137,6 +156,7 @@ LEXOBJS=\
 	$(DIR_O)\LexLout.obj \
 	$(DIR_O)\LexLua.obj \
 	$(DIR_O)\LexMagik.obj \
+	$(DIR_O)\LexMake.obj \
 	$(DIR_O)\LexMarkdown.obj \
 	$(DIR_O)\LexMatlab.obj \
 	$(DIR_O)\LexMetapost.obj \
@@ -147,9 +167,9 @@ LEXOBJS=\
 	$(DIR_O)\LexMySQL.obj \
 	$(DIR_O)\LexNimrod.obj \
 	$(DIR_O)\LexNsis.obj \
+	$(DIR_O)\LexNull.obj \
 	$(DIR_O)\LexOpal.obj \
 	$(DIR_O)\LexOScript.obj \
-	$(DIR_O)\LexOthers.obj \
 	$(DIR_O)\LexPascal.obj \
 	$(DIR_O)\LexPB.obj \
 	$(DIR_O)\LexPerl.obj \
@@ -159,10 +179,12 @@ LEXOBJS=\
 	$(DIR_O)\LexPowerPro.obj \
 	$(DIR_O)\LexPowerShell.obj \
 	$(DIR_O)\LexProgress.obj \
+	$(DIR_O)\LexProps.obj \
 	$(DIR_O)\LexPS.obj \
 	$(DIR_O)\LexPython.obj \
 	$(DIR_O)\LexR.obj \
 	$(DIR_O)\LexRebol.obj \
+	$(DIR_O)\LexRegistry.obj \
 	$(DIR_O)\LexRuby.obj \
 	$(DIR_O)\LexRust.obj \
 	$(DIR_O)\LexScriptol.obj \
@@ -206,10 +228,10 @@ $(DIR_O)\ScintRes.res : ScintRes.rc
 	$(RC) -fo$@ $**
 
 $(COMPONENT): $(SOBJS) $(DIR_O)\ScintRes.res
-	$(LD) $(LDFLAGS) -DEF:Scintilla.def -DLL -OUT:$@ $** $(LIBS)
+	$(LD) $(LDFLAGS) -DLL -OUT:$@ $** $(LIBS)
 
 $(LEXCOMPONENT): $(LOBJS) $(DIR_O)\ScintRes.res
-	$(LD) $(LDFLAGS) -DEF:Scintilla.def -DLL -OUT:$@ $** $(LIBS)
+	$(LD) $(LDFLAGS) -DLL -OUT:$@ $** $(LIBS)
 
 $(LEXLIB): $(LEXOBJS)
 	LIB /OUT:$@ $(LEXOBJS)
@@ -238,58 +260,235 @@ $(DIR_O)\ScintillaWinS.obj: ScintillaWin.cxx
 # Dependencies
 
 # All lexers depend on this set of headers
-LEX_HEADERS= ..\include\ILexer.h ..\include\Scintilla.h ..\include\SciLexer.h \
- ..\lexlib\Accessor.h ..\lexlib\CharacterSet.h ..\lexlib\LexAccessor.h \
- ..\lexlib\LexerModule.h ..\lexlib\StyleContext.h
+LEX_HEADERS= \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../include/SciLexer.h \
+	../lexlib/WordList.h \
+	../lexlib/LexAccessor.h \
+	../lexlib/Accessor.h \
+	../lexlib/StyleContext.h \
+	../lexlib/CharacterSet.h \
+	../lexlib/LexerModule.h \
+	../lexlib/OptionSet.h \
+	../lexlib/SparseState.h \
+	../lexlib/SubStyles.h
 
-$(DIR_O)\Accessor.obj: ../lexlib/Accessor.cxx ../include/ILexer.h \
-  ../include/Scintilla.h ../include/SciLexer.h ../lexlib/PropSetSimple.h \
-  ../lexlib/WordList.h ../lexlib/LexAccessor.h ../lexlib/Accessor.h
-$(DIR_O)\AutoComplete.obj: ../src/AutoComplete.cxx ../include/Platform.h \
-  ../lexlib/CharacterSet.h ../src/AutoComplete.h ../include/Scintilla.h
-$(DIR_O)\CallTip.obj: ../src/CallTip.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/CallTip.h
-$(DIR_O)\CaseConvert.obj: ../src/CaseConvert.cxx ../src/CaseConvert.h \
-  ../src/UniConversion.h ../src/UnicodeFromUTF8.h
-$(DIR_O)\CaseFolder.obj: ../src/CaseFolder.cxx ../src/CaseConvert.h \
-  ../src/UniConversion.h ../src/CaseFolder.h
-$(DIR_O)\Catalogue.obj: ../src/Catalogue.cxx ../include/ILexer.h \
-  ../include/Scintilla.h ../include/SciLexer.h ../lexlib/LexerModule.h \
-  ../src/Catalogue.h
-$(DIR_O)\CellBuffer.obj: ../src/CellBuffer.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
-  ../src/CellBuffer.h ../src/UniConversion.h
-$(DIR_O)\CharacterCategory.obj: ../lexlib/CharacterCategory.cxx \
-  ../lexlib/CharacterCategory.h
-$(DIR_O)\CharacterSet.obj: ../lexlib/CharacterSet.cxx ../lexlib/CharacterSet.h
-$(DIR_O)\CharClassify.obj: ../src/CharClassify.cxx ../src/CharClassify.h
-$(DIR_O)\ContractionState.obj: ../src/ContractionState.cxx ../include/Platform.h \
-  ../src/SplitVector.h ../src/Partitioning.h ../src/RunStyles.h \
-  ../src/ContractionState.h
-$(DIR_O)\Decoration.obj: ../src/Decoration.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
-  ../src/RunStyles.h ../src/Decoration.h
-$(DIR_O)\Document.obj: ../src/Document.cxx ../include/Platform.h ../include/ILexer.h \
-  ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
-  ../src/RunStyles.h ../src/CellBuffer.h ../src/PerLine.h \
-  ../src/CharClassify.h ../lexlib/CharacterSet.h ../src/Decoration.h \
-  ../src/CaseFolder.h ../src/Document.h ../src/RESearch.h \
-  ../src/UniConversion.h
-$(DIR_O)\Editor.obj: ../src/Editor.cxx ../include/Platform.h ../include/ILexer.h \
-  ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
-  ../src/RunStyles.h ../src/ContractionState.h ../src/CellBuffer.h \
-  ../src/KeyMap.h ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h \
-  ../src/Style.h ../src/ViewStyle.h ../src/CharClassify.h \
-  ../src/Decoration.h ../src/CaseFolder.h ../src/Document.h \
-  ../src/UniConversion.h ../src/Selection.h ../src/PositionCache.h \
-  ../src/Editor.h
-$(DIR_O)\ExternalLexer.obj: ../src/ExternalLexer.cxx ../include/Platform.h \
-  ../include/ILexer.h ../include/Scintilla.h ../include/SciLexer.h \
-  ../lexlib/LexerModule.h ../src/Catalogue.h ../src/ExternalLexer.h
-$(DIR_O)\Indicator.obj: ../src/Indicator.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/XPM.h ../src/Indicator.h
-$(DIR_O)\KeyMap.obj: ../src/KeyMap.cxx ../include/Platform.h ../include/Scintilla.h \
-  ../src/KeyMap.h
+$(DIR_O)\Accessor.obj: \
+	../lexlib/Accessor.cxx \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../include/SciLexer.h \
+	../lexlib/PropSetSimple.h \
+	../lexlib/WordList.h \
+	../lexlib/LexAccessor.h \
+	../lexlib/Accessor.h
+$(DIR_O)\AutoComplete.obj: \
+	../src/AutoComplete.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../lexlib/CharacterSet.h \
+	../src/Position.h \
+	../src/AutoComplete.h
+$(DIR_O)\CallTip.obj: \
+	../src/CallTip.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../lexlib/StringCopy.h \
+	../src/Position.h \
+	../src/CallTip.h
+$(DIR_O)\CaseConvert.obj: \
+	../src/CaseConvert.cxx \
+	../lexlib/StringCopy.h \
+	../src/CaseConvert.h \
+	../src/UniConversion.h \
+	../src/UnicodeFromUTF8.h
+$(DIR_O)\CaseFolder.obj: \
+	../src/CaseFolder.cxx \
+	../src/CaseFolder.h \
+	../src/CaseConvert.h \
+	../src/UniConversion.h
+$(DIR_O)\Catalogue.obj: \
+	../src/Catalogue.cxx \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../include/SciLexer.h \
+	../lexlib/LexerModule.h \
+	../src/Catalogue.h
+$(DIR_O)\CellBuffer.obj: \
+	../src/CellBuffer.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/CellBuffer.h \
+	../src/UniConversion.h
+$(DIR_O)\CharacterCategory.obj: \
+	../lexlib/CharacterCategory.cxx \
+	../lexlib/StringCopy.h \
+	../lexlib/CharacterCategory.h
+$(DIR_O)\CharacterSet.obj: \
+	../lexlib/CharacterSet.cxx \
+	../lexlib/CharacterSet.h
+$(DIR_O)\CharClassify.obj: \
+	../src/CharClassify.cxx \
+	../src/CharClassify.h
+$(DIR_O)\ContractionState.obj: \
+	../src/ContractionState.cxx \
+	../include/Platform.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h
+$(DIR_O)\Decoration.obj: \
+	../src/Decoration.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/Decoration.h
+$(DIR_O)\Document.obj: \
+	../src/Document.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/CharacterSet.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/CellBuffer.h \
+	../src/PerLine.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/RESearch.h \
+	../src/UniConversion.h \
+	../src/UnicodeFromUTF8.h
+$(DIR_O)\EditModel.obj: \
+	../src/EditModel.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/StringCopy.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/UniConversion.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h
+$(DIR_O)\Editor.obj: \
+	../src/Editor.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/StringCopy.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/PerLine.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/UniConversion.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h \
+	../src/MarginView.h \
+	../src/EditView.h \
+	../src/Editor.h
+$(DIR_O)\EditView.obj: \
+	../src/EditView.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/StringCopy.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/PerLine.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/UniConversion.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h \
+	../src/MarginView.h \
+	../src/EditView.h
+$(DIR_O)\ExternalLexer.obj: \
+	../src/ExternalLexer.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../include/SciLexer.h \
+	../lexlib/LexerModule.h \
+	../src/Catalogue.h \
+	../src/ExternalLexer.h
+$(DIR_O)\Indicator.obj: \
+	../src/Indicator.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/Indicator.h \
+	../src/XPM.h
+$(DIR_O)\KeyMap.obj: \
+	../src/KeyMap.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/KeyMap.h
 
 #++Autogenerated -- run scripts/LexGen.py to regenerate
 #**\n\($(DIR_O)\\\*.obj: ..\\lexers\\\*.cxx $(LEX_HEADERS)\n\n\)
@@ -320,6 +519,10 @@ $(DIR_O)\LexBash.obj: ..\lexers\LexBash.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexBasic.obj: ..\lexers\LexBasic.cxx $(LEX_HEADERS)
 
+$(DIR_O)\LexBatch.obj: ..\lexers\LexBatch.cxx $(LEX_HEADERS)
+
+$(DIR_O)\LexBibTeX.obj: ..\lexers\LexBibTeX.cxx $(LEX_HEADERS)
+
 $(DIR_O)\LexBullant.obj: ..\lexers\LexBullant.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexCaml.obj: ..\lexers\LexCaml.cxx $(LEX_HEADERS)
@@ -344,6 +547,8 @@ $(DIR_O)\LexCSS.obj: ..\lexers\LexCSS.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexD.obj: ..\lexers\LexD.cxx $(LEX_HEADERS)
 
+$(DIR_O)\LexDiff.obj: ..\lexers\LexDiff.cxx $(LEX_HEADERS)
+
 $(DIR_O)\LexDMAP.obj: ..\lexers\LexDMAP.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexDMIS.obj: ..\lexers\LexDMIS.cxx $(LEX_HEADERS)
@@ -353,6 +558,8 @@ $(DIR_O)\LexECL.obj: ..\lexers\LexECL.cxx $(LEX_HEADERS)
 $(DIR_O)\LexEiffel.obj: ..\lexers\LexEiffel.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexErlang.obj: ..\lexers\LexErlang.cxx $(LEX_HEADERS)
+
+$(DIR_O)\LexErrorList.obj: ..\lexers\LexErrorList.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexEScript.obj: ..\lexers\LexEScript.cxx $(LEX_HEADERS)
 
@@ -367,6 +574,8 @@ $(DIR_O)\LexGAP.obj: ..\lexers\LexGAP.cxx $(LEX_HEADERS)
 $(DIR_O)\LexGui4Cli.obj: ..\lexers\LexGui4Cli.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexHaskell.obj: ..\lexers\LexHaskell.cxx $(LEX_HEADERS)
+
+$(DIR_O)\LexHex.obj: ..\lexers\LexHex.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexHTML.obj: ..\lexers\LexHTML.cxx $(LEX_HEADERS)
 
@@ -385,6 +594,8 @@ $(DIR_O)\LexLout.obj: ..\lexers\LexLout.cxx $(LEX_HEADERS)
 $(DIR_O)\LexLua.obj: ..\lexers\LexLua.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexMagik.obj: ..\lexers\LexMagik.cxx $(LEX_HEADERS)
+
+$(DIR_O)\LexMake.obj: ..\lexers\LexMake.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexMarkdown.obj: ..\lexers\LexMarkdown.cxx $(LEX_HEADERS)
 
@@ -406,11 +617,11 @@ $(DIR_O)\LexNimrod.obj: ..\lexers\LexNimrod.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexNsis.obj: ..\lexers\LexNsis.cxx $(LEX_HEADERS)
 
+$(DIR_O)\LexNull.obj: ..\lexers\LexNull.cxx $(LEX_HEADERS)
+
 $(DIR_O)\LexOpal.obj: ..\lexers\LexOpal.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexOScript.obj: ..\lexers\LexOScript.cxx $(LEX_HEADERS)
-
-$(DIR_O)\LexOthers.obj: ..\lexers\LexOthers.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexPascal.obj: ..\lexers\LexPascal.cxx $(LEX_HEADERS)
 
@@ -430,6 +641,8 @@ $(DIR_O)\LexPowerShell.obj: ..\lexers\LexPowerShell.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexProgress.obj: ..\lexers\LexProgress.cxx $(LEX_HEADERS)
 
+$(DIR_O)\LexProps.obj: ..\lexers\LexProps.cxx $(LEX_HEADERS)
+
 $(DIR_O)\LexPS.obj: ..\lexers\LexPS.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexPython.obj: ..\lexers\LexPython.cxx $(LEX_HEADERS)
@@ -437,6 +650,8 @@ $(DIR_O)\LexPython.obj: ..\lexers\LexPython.cxx $(LEX_HEADERS)
 $(DIR_O)\LexR.obj: ..\lexers\LexR.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexRebol.obj: ..\lexers\LexRebol.cxx $(LEX_HEADERS)
+
+$(DIR_O)\LexRegistry.obj: ..\lexers\LexRegistry.cxx $(LEX_HEADERS)
 
 $(DIR_O)\LexRuby.obj: ..\lexers\LexRuby.cxx $(LEX_HEADERS)
 
@@ -485,98 +700,371 @@ $(DIR_O)\LexYAML.obj: ..\lexers\LexYAML.cxx $(LEX_HEADERS)
 
 #--Autogenerated -- end of automatically generated section
 
-$(DIR_O)\LexerBase.obj: ../lexlib/LexerBase.cxx ../include/ILexer.h \
-  ../include/Scintilla.h ../include/SciLexer.h ../lexlib/PropSetSimple.h \
-  ../lexlib/WordList.h ../lexlib/LexAccessor.h ../lexlib/Accessor.h \
-  ../lexlib/LexerModule.h ../lexlib/LexerBase.h
-$(DIR_O)\LexerModule.obj: ../lexlib/LexerModule.cxx ../include/ILexer.h \
-  ../include/Scintilla.h ../include/SciLexer.h ../lexlib/PropSetSimple.h \
-  ../lexlib/WordList.h ../lexlib/LexAccessor.h ../lexlib/Accessor.h \
-  ../lexlib/LexerModule.h ../lexlib/LexerBase.h ../lexlib/LexerSimple.h
-$(DIR_O)\LexerNoExceptions.obj: ../lexlib/LexerNoExceptions.cxx ../include/ILexer.h \
-  ../include/Scintilla.h ../include/SciLexer.h ../lexlib/PropSetSimple.h \
-  ../lexlib/WordList.h ../lexlib/LexAccessor.h ../lexlib/Accessor.h \
-  ../lexlib/LexerModule.h ../lexlib/LexerBase.h \
-  ../lexlib/LexerNoExceptions.h
-$(DIR_O)\LexerSimple.obj: ../lexlib/LexerSimple.cxx ../include/ILexer.h \
-  ../include/Scintilla.h ../include/SciLexer.h ../lexlib/PropSetSimple.h \
-  ../lexlib/WordList.h ../lexlib/LexAccessor.h ../lexlib/Accessor.h \
-  ../lexlib/LexerModule.h ../lexlib/LexerBase.h ../lexlib/LexerSimple.h
-$(DIR_O)\LineMarker.obj: ../src/LineMarker.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/XPM.h ../src/LineMarker.h
-$(DIR_O)\PerLine.obj: ../src/PerLine.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
-  ../src/CellBuffer.h ../src/PerLine.h
-$(DIR_O)\PlatWin.obj: PlatWin.cxx ../include/Platform.h ../src/UniConversion.h \
-  ../src/XPM.h ../src/FontQuality.h
-$(DIR_O)\PositionCache.obj: ../src/PositionCache.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
-  ../src/RunStyles.h ../src/ContractionState.h ../src/CellBuffer.h \
-  ../src/KeyMap.h ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h \
-  ../src/Style.h ../src/ViewStyle.h ../src/CharClassify.h \
-  ../src/Decoration.h ../include/ILexer.h ../src/CaseFolder.h \
-  ../src/Document.h ../src/UniConversion.h ../src/Selection.h \
-  ../src/PositionCache.h
-$(DIR_O)\PropSetSimple.obj: ../lexlib/PropSetSimple.cxx ../lexlib/PropSetSimple.h
-$(DIR_O)\RESearch.obj: ../src/RESearch.cxx ../src/CharClassify.h ../src/RESearch.h
-$(DIR_O)\RunStyles.obj: ../src/RunStyles.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
-  ../src/RunStyles.h
-$(DIR_O)\ScintillaBase.obj: ../src/ScintillaBase.cxx ../include/Platform.h \
-  ../include/ILexer.h ../include/Scintilla.h ../lexlib/PropSetSimple.h \
-  ../src/SplitVector.h ../src/Partitioning.h ../src/RunStyles.h \
-  ../src/ContractionState.h ../src/CellBuffer.h ../src/CallTip.h \
-  ../src/KeyMap.h ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h \
-  ../src/Style.h ../src/ViewStyle.h ../src/AutoComplete.h \
-  ../src/CharClassify.h ../src/Decoration.h ../src/CaseFolder.h \
-  ../src/Document.h ../src/Selection.h ../src/PositionCache.h \
-  ../src/Editor.h ../src/ScintillaBase.h
-$(DIR_O)\ScintillaBaseL.obj: ../src/ScintillaBase.cxx ../include/Platform.h \
-  ../include/ILexer.h ../include/Scintilla.h ../lexlib/PropSetSimple.h \
-  ../src/SplitVector.h ../src/Partitioning.h ../src/RunStyles.h \
-  ../src/ContractionState.h ../src/CellBuffer.h ../src/CallTip.h \
-  ../src/KeyMap.h ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h \
-  ../src/Style.h ../src/ViewStyle.h ../src/AutoComplete.h \
-  ../src/CharClassify.h ../src/Decoration.h ../src/CaseFolder.h \
-  ../src/Document.h ../src/Selection.h ../src/PositionCache.h \
-  ../src/Editor.h ../src/ScintillaBase.h
-$(DIR_O)\ScintillaWin.obj: ScintillaWin.cxx ../include/Platform.h \
-  ../include/ILexer.h ../include/Scintilla.h ../src/SplitVector.h \
-  ../src/Partitioning.h ../src/RunStyles.h ../src/ContractionState.h \
-  ../src/CellBuffer.h ../src/CallTip.h ../src/KeyMap.h ../src/Indicator.h \
-  ../src/XPM.h ../src/LineMarker.h ../src/Style.h ../src/AutoComplete.h \
-  ../src/ViewStyle.h ../src/CharClassify.h ../src/Decoration.h \
-  ../src/CaseFolder.h ../src/Document.h ../src/Selection.h \
-  ../src/PositionCache.h ../src/Editor.h ../src/ScintillaBase.h \
-  ../src/UniConversion.h ../src/CaseConvert.h PlatWin.h
-$(DIR_O)\ScintillaWinS.obj: ScintillaWin.cxx ../include/Platform.h \
-  ../include/ILexer.h ../include/Scintilla.h ../src/SplitVector.h \
-  ../src/Partitioning.h ../src/RunStyles.h ../src/ContractionState.h \
-  ../src/CellBuffer.h ../src/CallTip.h ../src/KeyMap.h ../src/Indicator.h \
-  ../src/XPM.h ../src/LineMarker.h ../src/Style.h ../src/AutoComplete.h \
-  ../src/ViewStyle.h ../src/CharClassify.h ../src/Decoration.h \
-  ../src/CaseFolder.h ../src/Document.h ../src/Selection.h \
-  ../src/PositionCache.h ../src/Editor.h ../src/ScintillaBase.h \
-  ../src/UniConversion.h ../src/CaseConvert.h PlatWin.h
-$(DIR_O)\ScintillaWinL.obj: ScintillaWin.cxx ../include/Platform.h \
-  ../include/ILexer.h ../include/Scintilla.h ../src/SplitVector.h \
-  ../src/Partitioning.h ../src/RunStyles.h ../src/ContractionState.h \
-  ../src/CellBuffer.h ../src/CallTip.h ../src/KeyMap.h ../src/Indicator.h \
-  ../src/XPM.h ../src/LineMarker.h ../src/Style.h ../src/AutoComplete.h \
-  ../src/ViewStyle.h ../src/CharClassify.h ../src/Decoration.h \
-  ../src/CaseFolder.h ../src/Document.h ../src/Selection.h \
-  ../src/PositionCache.h ../src/Editor.h ../src/ScintillaBase.h \
-  ../src/UniConversion.h ../src/CaseConvert.h PlatWin.h
-$(DIR_O)\Selection.obj: ../src/Selection.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/Selection.h
-$(DIR_O)\Style.obj: ../src/Style.cxx ../include/Platform.h ../include/Scintilla.h \
-  ../src/Style.h
-$(DIR_O)\StyleContext.obj: ../lexlib/StyleContext.cxx ../include/ILexer.h \
-  ../lexlib/LexAccessor.h ../lexlib/Accessor.h ../lexlib/StyleContext.h
-$(DIR_O)\UniConversion.obj: ../src/UniConversion.cxx ../src/UniConversion.h
-$(DIR_O)\ViewStyle.obj: ../src/ViewStyle.cxx ../include/Platform.h \
-  ../include/Scintilla.h ../src/SplitVector.h ../src/Partitioning.h \
-  ../src/RunStyles.h ../src/Indicator.h ../src/XPM.h ../src/LineMarker.h \
-  ../src/Style.h ../src/ViewStyle.h
-$(DIR_O)\WordList.obj: ../lexlib/WordList.cxx ../lexlib/WordList.h
-$(DIR_O)\XPM.obj: ../src/XPM.cxx ../include/Platform.h ../src/XPM.h
+$(DIR_O)\LexerBase.obj: \
+	../lexlib/LexerBase.cxx \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../include/SciLexer.h \
+	../lexlib/PropSetSimple.h \
+	../lexlib/WordList.h \
+	../lexlib/LexAccessor.h \
+	../lexlib/Accessor.h \
+	../lexlib/LexerModule.h \
+	../lexlib/LexerBase.h
+$(DIR_O)\LexerModule.obj: \
+	../lexlib/LexerModule.cxx \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../include/SciLexer.h \
+	../lexlib/PropSetSimple.h \
+	../lexlib/WordList.h \
+	../lexlib/LexAccessor.h \
+	../lexlib/Accessor.h \
+	../lexlib/LexerModule.h \
+	../lexlib/LexerBase.h \
+	../lexlib/LexerSimple.h
+$(DIR_O)\LexerNoExceptions.obj: \
+	../lexlib/LexerNoExceptions.cxx \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../include/SciLexer.h \
+	../lexlib/PropSetSimple.h \
+	../lexlib/WordList.h \
+	../lexlib/LexAccessor.h \
+	../lexlib/Accessor.h \
+	../lexlib/LexerModule.h \
+	../lexlib/LexerBase.h \
+	../lexlib/LexerNoExceptions.h
+$(DIR_O)\LexerSimple.obj: \
+	../lexlib/LexerSimple.cxx \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../include/SciLexer.h \
+	../lexlib/PropSetSimple.h \
+	../lexlib/WordList.h \
+	../lexlib/LexAccessor.h \
+	../lexlib/Accessor.h \
+	../lexlib/LexerModule.h \
+	../lexlib/LexerBase.h \
+	../lexlib/LexerSimple.h
+$(DIR_O)\LineMarker.obj: \
+	../src/LineMarker.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../lexlib/StringCopy.h \
+	../src/XPM.h \
+	../src/LineMarker.h
+$(DIR_O)\MarginView.obj: \
+	../src/MarginView.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/StringCopy.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/UniConversion.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h \
+	../src/MarginView.h \
+	../src/EditView.h
+$(DIR_O)\PerLine.obj: \
+	../src/PerLine.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/CellBuffer.h \
+	../src/PerLine.h
+$(DIR_O)\PlatWin.obj: \
+	PlatWin.cxx \
+	../include/Platform.h \
+	../lexlib/StringCopy.h \
+	../src/XPM.h \
+	../src/UniConversion.h \
+	../src/FontQuality.h
+$(DIR_O)\PositionCache.obj: \
+	../src/PositionCache.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/UniConversion.h \
+	../src/Selection.h \
+	../src/PositionCache.h
+$(DIR_O)\PropSetSimple.obj: \
+	../lexlib/PropSetSimple.cxx \
+	../lexlib/PropSetSimple.h
+$(DIR_O)\RESearch.obj: \
+	../src/RESearch.cxx \
+	../src/Position.h \
+	../src/CharClassify.h \
+	../src/RESearch.h
+$(DIR_O)\RunStyles.obj: \
+	../src/RunStyles.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h
+$(DIR_O)\ScintillaBase.obj: \
+	../src/ScintillaBase.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/PropSetSimple.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/CallTip.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h \
+	../src/MarginView.h \
+	../src/EditView.h \
+	../src/Editor.h \
+	../src/AutoComplete.h \
+	../src/ScintillaBase.h
+$(DIR_O)\ScintillaBaseL.obj: \
+	../src/ScintillaBase.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/PropSetSimple.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/CallTip.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h \
+	../src/MarginView.h \
+	../src/EditView.h \
+	../src/Editor.h \
+	../src/AutoComplete.h \
+	../src/ScintillaBase.h
+$(DIR_O)\ScintillaWin.obj: \
+	ScintillaWin.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/StringCopy.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/CallTip.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/CaseConvert.h \
+	../src/UniConversion.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h \
+	../src/MarginView.h \
+	../src/EditView.h \
+	../src/Editor.h \
+	../src/AutoComplete.h \
+	../src/ScintillaBase.h \
+	PlatWin.h \
+	HanjaDic.h
+$(DIR_O)\ScintillaWinL.obj: \
+	ScintillaWin.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/StringCopy.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/CallTip.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/CaseConvert.h \
+	../src/UniConversion.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h \
+	../src/MarginView.h \
+	../src/EditView.h \
+	../src/Editor.h \
+	../src/AutoComplete.h \
+	../src/ScintillaBase.h \
+	PlatWin.h \
+	HanjaDic.h
+$(DIR_O)\ScintillaWinS.obj: \
+	ScintillaWin.cxx \
+	../include/Platform.h \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../include/Scintilla.h \
+	../lexlib/StringCopy.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/ContractionState.h \
+	../src/CellBuffer.h \
+	../src/CallTip.h \
+	../src/KeyMap.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h \
+	../src/CharClassify.h \
+	../src/Decoration.h \
+	../src/CaseFolder.h \
+	../src/Document.h \
+	../src/CaseConvert.h \
+	../src/UniConversion.h \
+	../src/Selection.h \
+	../src/PositionCache.h \
+	../src/EditModel.h \
+	../src/MarginView.h \
+	../src/EditView.h \
+	../src/Editor.h \
+	../src/AutoComplete.h \
+	../src/ScintillaBase.h \
+	PlatWin.h \
+	HanjaDic.h
+$(DIR_O)\Selection.obj: \
+	../src/Selection.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/Position.h \
+	../src/Selection.h
+$(DIR_O)\Style.obj: \
+	../src/Style.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/Style.h
+$(DIR_O)\StyleContext.obj: \
+	../lexlib/StyleContext.cxx \
+	../include/ILexer.h \
+	../include/Sci_Position.h \
+	../lexlib/LexAccessor.h \
+	../lexlib/Accessor.h \
+	../lexlib/StyleContext.h
+$(DIR_O)\UniConversion.obj: \
+	../src/UniConversion.cxx \
+	../src/UniConversion.h
+$(DIR_O)\ViewStyle.obj: \
+	../src/ViewStyle.cxx \
+	../include/Platform.h \
+	../include/Scintilla.h \
+	../include/Sci_Position.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/Indicator.h \
+	../src/XPM.h \
+	../src/LineMarker.h \
+	../src/Style.h \
+	../src/ViewStyle.h
+$(DIR_O)\WordList.obj: \
+	../lexlib/WordList.cxx \
+	../lexlib/StringCopy.h \
+	../lexlib/WordList.h
+$(DIR_O)\XPM.obj: \
+	../src/XPM.cxx \
+	../include/Platform.h \
+	../src/XPM.h
+$(DIR_O)\HanjaDic: \
+	HanjaDic.cxx \
+	../src/UniConversion.h \
+	HanjaDic.h

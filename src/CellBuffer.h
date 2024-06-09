@@ -95,6 +95,7 @@ class UndoHistory {
 	int currentAction;
 	int undoSequenceDepth;
 	int savePoint;
+	int tentativePoint;
 
 	void EnsureUndoRoom();
 
@@ -116,6 +117,12 @@ public:
 	/// the buffer was saved. Undo and redo can move over the save point.
 	void SetSavePoint();
 	bool IsSavePoint() const;
+
+	// Tentative actions are used for input composition so that it can be undone cleanly
+	void TentativeStart();
+	void TentativeCommit();
+	bool TentativeActive() const { return tentativePoint >= 0; }
+	int TentativeSteps();
 
 	/// To perform an undo, StartUndo is called to retrieve the number of steps, then UndoStep is
 	/// called that many times. Similarly for redo.
@@ -170,6 +177,7 @@ public:
 	void Allocate(int newSize);
 	int GetLineEndTypes() const { return utf8LineEnds; }
 	void SetLineEndTypes(int utf8LineEnds_);
+	bool ContainsLineEnd(const char *s, int length) const;
 	void SetPerLine(PerLine *pl);
 	int Lines() const;
 	int LineStart(int line) const;
@@ -192,6 +200,11 @@ public:
 	/// the buffer was saved. Undo and redo can move over the save point.
 	void SetSavePoint();
 	bool IsSavePoint() const;
+
+	void TentativeStart();
+	void TentativeCommit();
+	bool TentativeActive() const;
+	int TentativeSteps();
 
 	bool SetUndoCollection(bool collectUndo);
 	bool IsCollectingUndo() const;

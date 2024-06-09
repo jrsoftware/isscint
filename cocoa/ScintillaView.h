@@ -70,21 +70,23 @@ extern NSString *const SCIUpdateUINotification;
  * SCIContentView is the Cocoa interface to the Scintilla backend. It handles text input and
  * provides a canvas for painting the output.
  */
-@interface SCIContentView : NSView <NSTextInputClient, NSUserInterfaceValidations>
+@interface SCIContentView : NSView <
+  NSTextInputClient,
+  NSUserInterfaceValidations,
+  NSDraggingSource,
+  NSDraggingDestination>
 {
 @private
   ScintillaView* mOwner;
   NSCursor* mCurrentCursor;
-  NSTrackingRectTag mCurrentTrackingRect;
+  NSTrackingArea *trackingArea;
 
   // Set when we are in composition mode and partial input is displayed.
   NSRange mMarkedTextRange;
-  BOOL undoCollectionWasActive;
 }
 
 @property (nonatomic, assign) ScintillaView* owner;
 
-- (void) removeMarkedText;
 - (void) setCursor: (int) cursor;
 
 - (BOOL) canUndo;
@@ -135,7 +137,7 @@ extern NSString *const SCIUpdateUINotification;
 // NSTextView compatibility layer.
 - (NSString*) string;
 - (void) setString: (NSString*) aString;
-- (void) insertText: (NSString*) aString;
+- (void) insertText: (id) aString;
 - (void) setEditable: (BOOL) editable;
 - (BOOL) isEditable;
 - (NSRange) selectedRange;

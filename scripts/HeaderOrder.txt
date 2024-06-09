@@ -20,16 +20,20 @@
 #include <cstring>
 #include <cctype>
 #include <cstdio>
+#include <cmath>
 
 // C++ standard library
 #include <stdexcept>
 #include <new>
 #include <string>
 #include <vector>
+#include <deque>
 #include <map>
 #include <set>
 #include <algorithm>
 #include <memory>
+#include <regex>
+#include <sstream>
 
 // GTK+ headers
 #include <glib.h>
@@ -84,11 +88,13 @@
 // src
 #include "Catalogue.h"
 
+#include "Position.h"
 #include "SplitVector.h"
 #include "Partitioning.h"
 #include "RunStyles.h"
 #include "ContractionState.h"
 #include "CellBuffer.h"
+#include "PerLine.h"
 #include "CallTip.h"
 #include "KeyMap.h"
 #include "Indicator.h"
@@ -106,6 +112,9 @@
 #include "Selection.h"
 #include "PositionCache.h"
 #include "FontQuality.h"
+#include "EditModel.h"
+#include "MarginView.h"
+#include "EditView.h"
 #include "Editor.h"
 
 #include "AutoComplete.h"
@@ -117,6 +126,7 @@
 
 // win32
 #include "PlatWin.h"
+#include "HanjaDic.h"
 
 // gtk
 #include "Converter.h"

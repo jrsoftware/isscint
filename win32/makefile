@@ -5,7 +5,13 @@
 # be needed to use other compilers.
 
 .SUFFIXES: .cxx
-DEL ?= del /q
+ifeq ($(OS),Windows_NT)
+DEL = del /q
+else
+DEL = rm -f
+endif
+RANLIB ?= ranlib
+WINDRES ?= windres
 
 COMPONENT = ../bin/Scintilla.dll
 LEXCOMPONENT = ../bin/SciLexer.dll
@@ -15,7 +21,7 @@ vpath %.h ../src ../include ../lexlib
 vpath %.cxx ../src ../lexlib ../lexers
 
 LDFLAGS=-shared -static -Wl,--enable-runtime-pseudo-reloc-v2 -mwindows -Wl,--add-stdcall-alias
-LIBS=-lstdc++ -limm32 -lole32 -luuid
+LIBS=-lstdc++ -limm32 -lole32 -luuid -loleaut32
 # Add -MMD to get dependencies
 INCLUDEDIRS=-I ../include -I ../src -I../lexlib
 
@@ -25,7 +31,11 @@ ifneq "$(shell g++ -c CheckD2D.cxx 2>&1)" ""
 D2DFLAGS=-DDISABLE_D2D
 endif
 
-CXXBASEFLAGS=--std=c++0x -Wall -pedantic $(INCLUDEDIRS) -fno-rtti $(D2DFLAGS)
+CXXBASEFLAGS=--std=c++0x -Wall -pedantic $(INCLUDEDIRS) $(D2DFLAGS)
+
+ifdef CXX11_REGEX
+REFLAGS=-DCXX11_REGEX
+endif
 
 ifdef DEBUG
 CXXFLAGS=-DDEBUG -g $(CXXBASEFLAGS)
@@ -35,7 +45,7 @@ STRIPFLAG=-s
 endif
 
 .cxx.o:
-	$(CXX) $(CXXFLAGS) -c $<
+	$(CXX) $(CXXFLAGS) $(REFLAGS) -c $<
 
 ALL:	$(COMPONENT) $(LEXCOMPONENT) $(LEXLIB) ScintillaWinS.o
 
@@ -63,10 +73,13 @@ BASEOBJS = \
 	ContractionState.o \
 	Decoration.o \
 	Document.o \
+	EditModel.o \
 	Editor.o \
+	EditView.o \
 	KeyMap.o \
 	Indicator.o \
 	LineMarker.o \
+	MarginView.o \
 	PerLine.o \
 	PlatWin.o \
 	PositionCache.o \
@@ -78,11 +91,12 @@ BASEOBJS = \
 	Style.o \
 	UniConversion.o \
 	ViewStyle.o \
-	XPM.o
+	XPM.o \
+	HanjaDic.o
 
 SOBJS = ScintillaWin.o ScintillaBase.o $(BASEOBJS)
 
-$(COMPONENT): $(SOBJS) Scintilla.def
+$(COMPONENT): $(SOBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(STRIPFLAG) $(SOBJS) $(CXXFLAGS) $(LIBS)
 
 LOBJS = \
@@ -98,12 +112,12 @@ LOBJS = \
 	WordList.o \
 	$(BASEOBJS) \
 	$(LEXOBJS)
-$(LEXCOMPONENT): $(LOBJS) Scintilla.def
+$(LEXCOMPONENT): $(LOBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(STRIPFLAG) $(LOBJS) $(CXXFLAGS) $(LIBS)
 
 $(LEXLIB): $(LEXOBJS)
 	$(AR) rc $@ $^
-	ranlib $@
+	$(RANLIB) $@
 
 # Automatically generate dependencies for most files with "make deps"
 include deps.mak
@@ -117,7 +131,7 @@ ScintillaBaseL.o: ScintillaBase.cxx Platform.h \
  KeyMap.h Indicator.h XPM.h LineMarker.h \
  Style.h ViewStyle.h AutoComplete.h \
  CharClassify.h Decoration.h Document.h \
- Selection.h PositionCache.h Editor.h \
+ Selection.h PositionCache.h EditModel.h Editor.h EditView.h \
  ScintillaBase.h LexAccessor.h Accessor.h \
  LexerModule.h Catalogue.h CaseFolder.h
 
@@ -128,7 +142,7 @@ ScintillaWinL.o: ScintillaWin.cxx Platform.h \
  XPM.h LineMarker.h Style.h AutoComplete.h \
  ViewStyle.h CharClassify.h Decoration.h \
  Document.h Selection.h PositionCache.h \
- Editor.h ScintillaBase.h UniConversion.h \
+ EditModel.h Editor.h EditView.h ScintillaBase.h UniConversion.h \
  LexAccessor.h Accessor.h \
  LexerModule.h Catalogue.h CaseConvert.h \
  CaseFolder.h
@@ -140,7 +154,7 @@ ScintillaWinS.o: ScintillaWin.cxx Platform.h \
  XPM.h LineMarker.h Style.h AutoComplete.h \
  ViewStyle.h CharClassify.h Decoration.h \
  Document.h Selection.h PositionCache.h \
- Editor.h ScintillaBase.h UniConversion.h \
+ EditModel.h Editor.h EditView.h ScintillaBase.h UniConversion.h \
  CaseConvert.h CaseFolder.h
 
 ScintillaBaseL.o:
@@ -153,5 +167,5 @@ ScintillaWinL.o:
 	$(CXX) $(CXXFLAGS) -D SCI_LEXER -c $< -o $@
 
 ScintRes.o:	ScintRes.rc
-	windres ScintRes.rc $@
+	$(WINDRES) ScintRes.rc $@
 
