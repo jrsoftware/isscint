@@ -8,7 +8,7 @@
 
 .SUFFIXES: .cxx .c .o .h .a
 ifdef CLANG
-CXX = clang++
+CXX = clang++ -Wno-deprecated-register
 CC = clang
 # Can choose aspect to sanitize: address and undefined can simply change SANITIZE but for
 # thread also need to create Position Independent Executable -> search online documentation
@@ -31,6 +31,11 @@ RANLIB = ranlib
 endif
 endif
 
+# Enable Position Independent Code except on Windows where it is the default so the flag produces a warning
+ifndef windir
+PICFLAGS = -fPIC
+endif
+
 ifdef windir
 DEL = del /q
 COMPLIB=..\bin\scintilla.a
@@ -46,12 +51,16 @@ INCLUDEDIRS=-I ../include -I ../src -I ../lexlib
 ifdef CHECK_DEPRECATED
 DEPRECATED=-DGDK_PIXBUF_DISABLE_DEPRECATED -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DDISABLE_GDK_FONT
 endif
-CXXBASEFLAGS=-Wall -pedantic -DGTK -DSCI_LEXER $(INCLUDEDIRS) $(DEPRECATED)
+CXXBASEFLAGS=-Wall -pedantic $(PICFLAGS) -DGTK -DSCI_LEXER $(INCLUDEDIRS) $(DEPRECATED)
 
 ifdef NOTHREADS
 THREADFLAGS=-DG_THREADS_IMPL_NONE
 else
 THREADFLAGS=
+endif
+
+ifdef CXX11_REGEX
+REFLAGS=-DCXX11_REGEX
 endif
 
 ifdef DEBUG
@@ -65,7 +74,7 @@ CTFLAGS=-DNDEBUG -Os $(CXXBASEFLAGS) $(THREADFLAGS)
 endif
 
 CFLAGS:=$(CTFLAGS)
-CXXTFLAGS:=--std=c++0x $(CTFLAGS)
+CXXTFLAGS:=--std=c++0x $(CTFLAGS) $(REFLAGS)
 
 CONFIGFLAGS:=$(shell pkg-config --cflags $(GTKVERSION))
 MARSHALLER=scintilla-marshal.o
@@ -90,7 +99,8 @@ deps:
 
 $(COMPLIB): Accessor.o CharacterSet.o LexerBase.o LexerModule.o LexerSimple.o StyleContext.o WordList.o \
 	CharClassify.o Decoration.o Document.o PerLine.o Catalogue.o CallTip.o CaseConvert.o CaseFolder.o \
-	ScintillaBase.o ContractionState.o Editor.o ExternalLexer.o PropSetSimple.o PlatGTK.o \
+	ScintillaBase.o ContractionState.o EditModel.o Editor.o EditView.o ExternalLexer.o MarginView.o \
+	PropSetSimple.o PlatGTK.o \
 	KeyMap.o LineMarker.o PositionCache.o ScintillaGTK.o CellBuffer.o CharacterCategory.o ViewStyle.o \
 	RESearch.o RunStyles.o Selection.o Style.o Indicator.o AutoComplete.o UniConversion.o XPM.o \
 	$(MARSHALLER) $(LEXOBJS)

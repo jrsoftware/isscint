@@ -8,12 +8,14 @@
 #include <string.h>
 #include <assert.h>
 
+#include <stdexcept>
 #include <vector>
 #include <map>
 
 #include "Platform.h"
 
 #include "Scintilla.h"
+#include "Position.h"
 #include "SplitVector.h"
 #include "Partitioning.h"
 #include "RunStyles.h"
@@ -103,8 +105,14 @@ ViewStyle::ViewStyle(const ViewStyle &source) {
 		markers[mrk] = source.markers[mrk];
 	}
 	CalcLargestMarkerHeight();
+	indicatorsDynamic = 0;
+	indicatorsSetFore = 0;
 	for (int ind=0; ind<=INDIC_MAX; ind++) {
 		indicators[ind] = source.indicators[ind];
+		if (indicators[ind].IsDynamic())
+			indicatorsDynamic++;
+		if (indicators[ind].OverridesTextFore())
+			indicatorsSetFore++;
 	}
 
 	selColours = source.selColours;
@@ -145,6 +153,7 @@ ViewStyle::ViewStyle(const ViewStyle &source) {
 		ms[margin] = source.ms[margin];
 	}
 	maskInLine = source.maskInLine;
+	maskDrawInText = source.maskDrawInText;
 	fixedColumnWidth = source.fixedColumnWidth;
 	marginInside = source.marginInside;
 	textStart = source.textStart;
@@ -185,6 +194,32 @@ ViewStyle::~ViewStyle() {
 	fonts.clear();
 }
 
+void ViewStyle::CalculateMarginWidthAndMask() {
+	fixedColumnWidth = marginInside ? leftMarginWidth : 0;
+	maskInLine = 0xffffffff;
+	int maskDefinedMarkers = 0;
+	for (int margin = 0; margin <= SC_MAX_MARGIN; margin++) {
+		fixedColumnWidth += ms[margin].width;
+		if (ms[margin].width > 0)
+			maskInLine &= ~ms[margin].mask;
+		maskDefinedMarkers |= ms[margin].mask;
+	}
+	maskDrawInText = 0;
+	for (int markBit = 0; markBit < 32; markBit++) {
+		const int maskBit = 1 << markBit;
+		switch (markers[markBit].markType) {
+		case SC_MARK_EMPTY:
+			maskInLine &= ~maskBit;
+			break;
+		case SC_MARK_BACKGROUND:
+		case SC_MARK_UNDERLINE:
+			maskInLine &= ~maskBit;
+			maskDrawInText |= maskDefinedMarkers & maskBit;
+			break;
+		}
+	}
+}
+
 void ViewStyle::Init(size_t stylesSize_) {
 	AllocStyles(stylesSize_);
 	nextExtendedStyle = 256;
@@ -194,18 +229,15 @@ void ViewStyle::Init(size_t stylesSize_) {
 	// There are no image markers by default, so no need for calling CalcLargestMarkerHeight()
 	largestMarkerHeight = 0;
 
-	indicators[0].style = INDIC_SQUIGGLE;
-	indicators[0].under = false;
-	indicators[0].fore = ColourDesired(0, 0x7f, 0);
-	indicators[1].style = INDIC_TT;
-	indicators[1].under = false;
-	indicators[1].fore = ColourDesired(0, 0, 0xff);
-	indicators[2].style = INDIC_PLAIN;
-	indicators[2].under = false;
-	indicators[2].fore = ColourDesired(0xff, 0, 0);
+	indicators[0] = Indicator(INDIC_SQUIGGLE, ColourDesired(0, 0x7f, 0));
+	indicators[1] = Indicator(INDIC_TT, ColourDesired(0, 0, 0xff));
+	indicators[2] = Indicator(INDIC_PLAIN, ColourDesired(0xff, 0, 0));
 
 	technology = SC_TECHNOLOGY_DEFAULT;
+	indicatorsDynamic = 0;
+	indicatorsSetFore = 0;
 	lineHeight = 1;
+	lineOverlap = 0;
 	maxAscent = 1;
 	maxDescent = 1;
 	aveCharWidth = 8;
@@ -262,13 +294,7 @@ void ViewStyle::Init(size_t stylesSize_) {
 	ms[2].width = 0;
 	ms[2].mask = 0;
 	marginInside = true;
-	fixedColumnWidth = marginInside ? leftMarginWidth : 0;
-	maskInLine = 0xffffffff;
-	for (int margin=0; margin <= SC_MAX_MARGIN; margin++) {
-		fixedColumnWidth += ms[margin].width;
-		if (ms[margin].width > 0)
-			maskInLine &= ~ms[margin].mask;
-	}
+	CalculateMarginWidthAndMask();
 	textStart = marginInside ? fixedColumnWidth : leftMarginWidth;
 	zoomLevel = 0;
 	viewWhitespace = wsInvisible;
@@ -325,12 +351,25 @@ void ViewStyle::Refresh(Surface &surface, int tabInChars) {
 		FontRealised *fr = Find(styles[k]);
 		styles[k].Copy(fr->font, *fr);
 	}
+	indicatorsDynamic = 0;
+	indicatorsSetFore = 0;
+	for (int ind = 0; ind <= INDIC_MAX; ind++) {
+		if (indicators[ind].IsDynamic())
+			indicatorsDynamic++;
+		if (indicators[ind].OverridesTextFore())
+			indicatorsSetFore++;
+	}
 	maxAscent = 1;
 	maxDescent = 1;
 	FindMaxAscentDescent();
 	maxAscent += extraAscent;
 	maxDescent += extraDescent;
 	lineHeight = maxAscent + maxDescent;
+	lineOverlap = lineHeight / 10;
+	if (lineOverlap < 2)
+		lineOverlap = 2;
+	if (lineOverlap > lineHeight)
+		lineOverlap = lineHeight;
 
 	someStylesProtected = false;
 	someStylesForceCase = false;
@@ -352,13 +391,7 @@ void ViewStyle::Refresh(Surface &surface, int tabInChars) {
 		controlCharWidth = surface.WidthChar(styles[STYLE_CONTROLCHAR].font, static_cast<char>(controlCharSymbol));
 	}
 
-	fixedColumnWidth = marginInside ? leftMarginWidth : 0;
-	maskInLine = 0xffffffff;
-	for (int margin=0; margin <= SC_MAX_MARGIN; margin++) {
-		fixedColumnWidth += ms[margin].width;
-		if (ms[margin].width > 0)
-			maskInLine &= ~ms[margin].mask;
-	}
+	CalculateMarginWidthAndMask();
 	textStart = marginInside ? fixedColumnWidth : leftMarginWidth;
 }
 
@@ -462,7 +495,7 @@ ColourOptional ViewStyle::Background(int marksOfLine, bool caretActive, bool lin
 		int marksMasked = marksOfLine & maskInLine;
 		if (marksMasked) {
 			for (int markBit = 0; (markBit < 32) && marksMasked; markBit++) {
-				if ((marksMasked & 1) && (markers[markBit].markType != SC_MARK_EMPTY) &&
+				if ((marksMasked & 1) &&
 					(markers[markBit].alpha == SC_ALPHA_NOALPHA)) {
 					background = ColourOptional(markers[markBit].back, true);
 				}
@@ -473,6 +506,20 @@ ColourOptional ViewStyle::Background(int marksOfLine, bool caretActive, bool lin
 	return background;
 }
 
+bool ViewStyle::SelectionBackgroundDrawn() const {
+	return selColours.back.isSet &&
+		((selAlpha == SC_ALPHA_NOALPHA) || (selAdditionalAlpha == SC_ALPHA_NOALPHA));
+}
+
+bool ViewStyle::WhitespaceBackgroundDrawn() const {
+	return (viewWhitespace != wsInvisible) && (whitespaceColours.back.isSet);
+}
+
+bool ViewStyle::WhiteSpaceVisible(bool inIndent) const {
+	return (!inIndent && viewWhitespace == wsVisibleAfterIndent) ||
+		(inIndent && viewWhitespace == wsVisibleOnlyInIndent) ||
+		viewWhitespace == wsVisibleAlways;
+}
 
 ColourDesired ViewStyle::WrapColour() const {
 	if (whitespaceColours.fore.isSet)
