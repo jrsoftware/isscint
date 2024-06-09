@@ -460,7 +460,7 @@ void SurfaceImpl::MeasureWidths(Font &font,
 		return;
 	SetCodec(font);
 	QString su = codec->toUnicode(s, len);
-	QTextLayout tlay(su, *FontPointer(font));
+	QTextLayout tlay(su, *FontPointer(font), GetPaintDevice());
 	tlay.beginLayout();
 	QTextLine tl = tlay.createLine();
 	tlay.endLayout();
@@ -471,7 +471,7 @@ void SurfaceImpl::MeasureWidths(Font &font,
 		int i=0;
 		while (ui<fit) {
 			size_t lenChar = utf8LengthFromLead(us[i]);
-			size_t codeUnits = (lenChar < 4) ? 1 : 2;
+			int codeUnits = (lenChar < 4) ? 1 : 2;
 			qreal xPosition = tl.cursorToX(ui+codeUnits);
 			for (unsigned int bytePos=0; (bytePos<lenChar) && (i<len); bytePos++) {
 				positions[i++] = qRound(xPosition);
@@ -738,8 +738,7 @@ PRectangle Window::GetMonitorRect(Point pt)
 	QPoint posGlobal = window(wid)->mapToGlobal(QPoint(pt.x, pt.y));
 	QDesktopWidget *desktop = QApplication::desktop();
 	QRect rectScreen = desktop->availableGeometry(posGlobal);
-	rectScreen.moveLeft(-originGlobal.x());
-	rectScreen.moveTop(-originGlobal.y());
+	rectScreen.translate(-originGlobal.x(), -originGlobal.y());
 	return PRectangle(rectScreen.left(), rectScreen.top(),
 	        rectScreen.right(), rectScreen.bottom());
 }
@@ -916,6 +915,13 @@ int ListBoxImpl::Length()
 void ListBoxImpl::Select(int n)
 {
 	ListWidget *list = static_cast<ListWidget *>(wid);
+	QModelIndex index = list->model()->index(n, 0);
+	if (index.isValid()) {
+		QRect row_rect = list->visualRect(index);
+		if (!list->viewport()->rect().contains(row_rect)) {
+			list->scrollTo(index, QAbstractItemView::PositionAtTop);
+		}
+	}
 	list->setCurrentRow(n);
 }
 
@@ -978,9 +984,9 @@ void ListBoxImpl::SetList(const char *list, char separator, char typesep)
 	// This method is *not* platform dependent.
 	// It is borrowed from the GTK implementation.
 	Clear();
-	int count = strlen(list) + 1;
+	size_t count = strlen(list) + 1;
 	std::vector<char> words(list, list+count);
-	char *startword = words.data();
+	char *startword = &words[0];
 	char *numword = NULL;
 	int i = 0;
 	for (; words[i]; i++) {
@@ -989,10 +995,10 @@ void ListBoxImpl::SetList(const char *list, char separator, char typesep)
 			if (numword)
 				*numword = '\0';
 			Append(startword, numword?atoi(numword + 1):-1);
-			startword = words.data() + i + 1;
+			startword = &words[0] + i + 1;
 			numword = NULL;
 		} else if (words[i] == typesep) {
-			numword = words.data() + i;
+			numword = &words[0] + i;
 		}
 	}
 	if (startword) {
@@ -1264,7 +1270,7 @@ int Platform::DBCSCharMaxLength()
 
 static QTime timer;
 
-ElapsedTime::ElapsedTime()
+ElapsedTime::ElapsedTime() : bigBit(0), littleBit(0)
 {
 	timer.start();
 }

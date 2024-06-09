@@ -31,7 +31,7 @@ public:
 class RESearch {
 
 public:
-	RESearch(CharClassify *charClassTable);
+	explicit RESearch(CharClassify *charClassTable);
 	~RESearch();
 	void GrabMatches(CharacterIndexer &ci);
 	const char *Compile(const char *pattern, int length, bool caseSensitive, bool posix);
@@ -61,7 +61,7 @@ private:
 	unsigned char bittab[BITBLK]; /* bit table for CCL pre-set bits */
 	int failure;
 	CharClassify *charClass;
-	bool iswordc(unsigned char x) {
+	bool iswordc(unsigned char x) const {
 		return charClass->IsWord(x);
 	}
 };

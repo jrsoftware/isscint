@@ -14,6 +14,8 @@
 #include "Platform.h"
 
 #include "Scintilla.h"
+
+#include "StringCopy.h"
 #include "CallTip.h"
 
 #ifdef SCI_NAMESPACE
@@ -69,7 +71,7 @@ bool CallTip::IsTabCharacter(char ch) const {
 	return (tabSize > 0) && (ch == '\t');
 }
 
-int CallTip::NextTabPos(int x) {
+int CallTip::NextTabPos(int x) const {
 	if (tabSize > 0) {              // paranoia... not called unless this is true
 		x -= insetX;                // position relative to text
 		x = (x + tabSize) / tabSize;  // tab "number"
@@ -125,16 +127,14 @@ void CallTip::DrawChunk(Surface *surface, int &x, const char *s,
     						Point(centreX + halfWidth, centreY + halfWidth / 2),
     						Point(centreX, centreY - halfWidth + halfWidth / 2),
 						};
-						surface->Polygon(pts, sizeof(pts) / sizeof(pts[0]),
-                 						colourBG, colourBG);
+						surface->Polygon(pts, ELEMENTS(pts), colourBG, colourBG);
 					} else {            // Down arrow
 						Point pts[] = {
     						Point(centreX - halfWidth, centreY - halfWidth / 2),
     						Point(centreX + halfWidth, centreY - halfWidth / 2),
     						Point(centreX, centreY + halfWidth - halfWidth / 2),
 						};
-						surface->Polygon(pts, sizeof(pts) / sizeof(pts[0]),
-                 						colourBG, colourBG);
+						surface->Polygon(pts, ELEMENTS(pts), colourBG, colourBG);
 					}
 				}
 				xEnd = rcClient.right;
