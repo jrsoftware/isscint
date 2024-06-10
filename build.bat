@@ -35,7 +35,7 @@ echo Compiling isscint.dll done
 echo - Copying files
 copy bin\Scintilla.dll "%ISSRCROOT%\Files\isscint.dll"
 if errorlevel 1 goto failed
-call "%ISSRCROOT%\Projects\Bin\synch-isfiles.bat"
+call "%ISSRCROOT%\Projects\Bin\synch-isfiles.bat" nopause
 if errorlevel 1 goto failed
 
 echo All done!
