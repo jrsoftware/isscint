@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <memory>
 
 #include "Platform.h"
 
@@ -102,7 +103,7 @@ TEST_CASE("SparseState") {
 		ssAdditions.Set(4, 34);
 		REQUIRE(1u == ssAdditions.size());
 		bool mergeChanged = ss.Merge(ssAdditions,5);
-		REQUIRE(0 == mergeChanged);
+		REQUIRE(false == mergeChanged);
 
 		ssAdditions.Set(4, 44);
 		REQUIRE(1u == ssAdditions.size());
@@ -122,7 +123,7 @@ TEST_CASE("SparseState") {
 		ssAdditions.Set(4, 34);
 		REQUIRE(1u == ssAdditions.size());
 		bool mergeChanged = ss.Merge(ssAdditions,5);
-		REQUIRE(0 == mergeChanged);
+		REQUIRE(false == mergeChanged);
 
 		ssAdditions.Set(4, 44);
 		REQUIRE(1u == ssAdditions.size());
@@ -157,7 +158,7 @@ TEST_CASE("SparseState") {
 		ssAdditions.Set(2, 32);
 		bool mergeChanged = ss.Merge(ssAdditions,3);
 
-		REQUIRE(0 == mergeChanged);
+		REQUIRE(false == mergeChanged);
 		REQUIRE(2u == ss.size());
 		REQUIRE(32 == ss.ValueAt(2));
 	}
@@ -171,7 +172,7 @@ TEST_CASE("SparseState") {
 		ssAdditions.Set(2, 32);
 		bool mergeChanged = ss.Merge(ssAdditions,2);
 
-		REQUIRE(0 == mergeChanged);
+		REQUIRE(false == mergeChanged);
 		REQUIRE(2u == ss.size());
 		REQUIRE(32 == ss.ValueAt(2));
 	}
@@ -186,7 +187,7 @@ TEST_CASE("SparseState") {
 		ssAdditions.Set(5, 34);
 		bool mergeChanged = ss.Merge(ssAdditions,6);
 
-		REQUIRE(0 == mergeChanged);
+		REQUIRE(false == mergeChanged);
 		REQUIRE(3u == ss.size());
 		REQUIRE(34 == ss.ValueAt(4));
 	}

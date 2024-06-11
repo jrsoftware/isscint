@@ -29,6 +29,17 @@
 #define SC_INDICATOR_CONVERTED INDIC_IME+2
 #define SC_INDICATOR_UNKNOWN INDIC_IME_MAX
 
+// Q_WS_MAC and Q_WS_X11 aren't defined in Qt5
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#ifdef Q_OS_MAC
+#define Q_WS_MAC 1
+#endif
+
+#if !defined(Q_OS_MAC) && !defined(Q_OS_WIN)
+#define Q_WS_X11 1
+#endif
+#endif // QT_VERSION >= 5.0.0
+
 #ifdef SCI_NAMESPACE
 using namespace Scintilla;
 #endif
@@ -289,9 +300,7 @@ void ScintillaEditBase::mousePressEvent(QMouseEvent *event)
 		return;
 	}
 
-	bool button = event->button() == Qt::LeftButton;
-
-	if (button) {
+	if (event->button() == Qt::LeftButton) {
 		bool shift = QApplication::keyboardModifiers() & Qt::ShiftModifier;
 		bool ctrl  = QApplication::keyboardModifiers() & Qt::ControlModifier;
 #ifdef Q_WS_X11
@@ -303,6 +312,14 @@ void ScintillaEditBase::mousePressEvent(QMouseEvent *event)
 #endif
 
 		sqt->ButtonDown(pos, time.elapsed(), shift, ctrl, alt);
+	}
+
+	if (event->button() == Qt::RightButton) {
+		bool shift = QApplication::keyboardModifiers() & Qt::ShiftModifier;
+		bool ctrl  = QApplication::keyboardModifiers() & Qt::ControlModifier;
+		bool alt   = QApplication::keyboardModifiers() & Qt::AltModifier;
+
+		sqt->RightButtonDownWithModifiers(pos, time.elapsed(), ScintillaQt::ModifierFlags(shift, ctrl, alt));
 	}
 }
 
@@ -350,9 +367,12 @@ void ScintillaEditBase::contextMenuEvent(QContextMenuEvent *event)
 {
 	Point pos = PointFromQPoint(event->globalPos());
 	Point pt = PointFromQPoint(event->pos());
-	if (!sqt->PointInSelection(pt))
+	if (!sqt->PointInSelection(pt)) {
 		sqt->SetEmptySelection(sqt->PositionFromLocation(pt));
-	sqt->ContextMenu(pos);
+	}
+	if (sqt->ShouldDisplayPopup(pt)) {
+		sqt->ContextMenu(pos);
+	}
 }
 
 void ScintillaEditBase::dragEnterEvent(QDragEnterEvent *event)
@@ -431,7 +451,7 @@ void ScintillaEditBase::DrawImeIndicator(int indicator, int len)
 	if (indicator < 8 || indicator > INDIC_MAX) {
 		return;
 	}
-	sqt->pdoc->decorations.SetCurrentIndicator(indicator);
+	sqt->pdoc->DecorationSetCurrentIndicator(indicator);
 	for (size_t r=0; r< sqt-> sel.Count(); r++) {
 		int positionInsert = sqt->sel.Range(r).Start().Position();
 		sqt->pdoc->DecorationFillRange(positionInsert - len, 1, len);
@@ -447,17 +467,9 @@ static int GetImeCaretPos(QInputMethodEvent *event)
 	return 0;
 }
 
-static std::vector<int> MapImeIndicators(QInputMethodEvent *event, bool preeditNotChanged)
+static std::vector<int> MapImeIndicators(QInputMethodEvent *event)
 {
-#ifndef Q_OS_LINUX
-	Q_UNUSED(preeditNotChanged)
-#endif
-	const QString preeditStr = event->preeditString();
-	std::vector<int> imeIndicator(preeditStr.length(), SC_INDICATOR_UNKNOWN);
-#ifdef Q_OS_LINUX
-	const int imeCaretPos = GetImeCaretPos(event);
-#endif
-
+	std::vector<int> imeIndicator(event->preeditString().size(), SC_INDICATOR_UNKNOWN);
 	foreach (QInputMethodEvent::Attribute attr, event->attributes()) {
 		if (attr.type == QInputMethodEvent::TextFormat) {
 			QTextFormat format = attr.value.value<QTextFormat>();
@@ -465,12 +477,12 @@ static std::vector<int> MapImeIndicators(QInputMethodEvent *event, bool preeditN
 
 			int indicator = SC_INDICATOR_UNKNOWN;
 			switch (charFormat.underlineStyle()) {
-				case QTextCharFormat::NoUnderline:
-					indicator = SC_INDICATOR_TARGET; //target input
+				case QTextCharFormat::NoUnderline: // win32, linux
+					indicator = SC_INDICATOR_TARGET;
 					break;
-				case QTextCharFormat::SingleUnderline:
-				case QTextCharFormat::DashUnderline:
-					indicator = SC_INDICATOR_INPUT; //normal input
+				case QTextCharFormat::SingleUnderline: // osx
+				case QTextCharFormat::DashUnderline: // win32, linux
+					indicator = SC_INDICATOR_INPUT;
 					break;
 				case QTextCharFormat::DotLine:
 				case QTextCharFormat::DashDotLine:
@@ -482,16 +494,19 @@ static std::vector<int> MapImeIndicators(QInputMethodEvent *event, bool preeditN
 				default:
 					indicator = SC_INDICATOR_UNKNOWN;
 			}
-#ifdef Q_OS_LINUX
-			// ibus-qt has a bug to return only one underline style.
-			// Q_OS_LINUX blocks are temporary work around to cope with it.
-			if ((attr.length > 0) && (attr.start == imeCaretPos)) {
+
+			if (format.hasProperty(QTextFormat::BackgroundBrush)) // win32, linux
 				indicator = SC_INDICATOR_TARGET;
-				if ((imeCaretPos == 0) && (preeditNotChanged)) { // moved by an arrow key.
-					indicator = SC_INDICATOR_INPUT;
+
+#ifdef Q_OS_OSX
+			if (charFormat.underlineStyle() == QTextCharFormat::SingleUnderline) {
+				QColor uc = charFormat.underlineColor();
+				if (uc.lightness() < 2) { // osx
+					indicator = SC_INDICATOR_TARGET;
 				}
 			}
 #endif
+
 			for (int i = attr.start; i < attr.start+attr.length; i++) {
 				imeIndicator[i] = indicator;
 			}
@@ -510,12 +525,13 @@ void ScintillaEditBase::inputMethodEvent(QInputMethodEvent *event)
 		return;
 	}
 
+	bool initialCompose = false;
 	if (sqt->pdoc->TentativeActive()) {
 		sqt->pdoc->TentativeUndo();
 	} else {
 		// No tentative undo means start of this composition so
 		// Fill in any virtual spaces.
-		sqt->ClearBeforeTentativeStart();
+		initialCompose = true;
 	}
 
 	sqt->view.imeCaretBlockOverride = false;
@@ -542,16 +558,11 @@ void ScintillaEditBase::inputMethodEvent(QInputMethodEvent *event)
 			return;
 		}
 
+		if (initialCompose)
+			sqt->ClearBeforeTentativeStart();
 		sqt->pdoc->TentativeStart(); // TentativeActive() from now on.
 
-		std::vector<int> imeIndicator = MapImeIndicators(event, preeditString == preeditStr);
-#ifdef Q_OS_LINUX
-		preeditString = preeditStr;
-#endif
-
-		// Display preedit characters one by one.
-		int imeCharPos[MAXLENINPUTIME] = {0};
-		int numBytes = 0;
+		std::vector<int> imeIndicator = MapImeIndicators(event);
 
 		const bool recording = sqt->recordingMacro;
 		sqt->recordingMacro = false;
@@ -561,24 +572,27 @@ void ScintillaEditBase::inputMethodEvent(QInputMethodEvent *event)
 			const QByteArray oneChar = sqt->BytesForDocument(oneCharUTF16);
 			const int oneCharLen = oneChar.length();
 
-			// Record character positions for moving ime caret.
-			numBytes += oneCharLen;
-			imeCharPos[i + ucWidth] = numBytes;
-
 			sqt->AddCharUTF(oneChar.data(), oneCharLen);
 
 			DrawImeIndicator(imeIndicator[i], oneCharLen);
-
 			i += ucWidth;
 		}
 		sqt->recordingMacro = recording;
 
 		// Move IME carets.
 		int imeCaretPos = GetImeCaretPos(event);
-		MoveImeCarets(- imeCharPos[preeditStrLen] + imeCharPos[imeCaretPos]);
+		int imeEndToImeCaretU16 = imeCaretPos - preeditStrLen;
+		int imeCaretPosDoc = sqt->pdoc->GetRelativePositionUTF16(sqt->CurrentPosition(), imeEndToImeCaretU16);
+
+		MoveImeCarets(- sqt->CurrentPosition() + imeCaretPosDoc);
 
 		if (IsHangul(preeditStr.at(0))) {
-			MoveImeCarets(- imeCharPos[1]);
+#ifndef Q_OS_WIN
+			if (imeCaretPos > 0) {
+				int oneCharBefore = sqt->pdoc->GetRelativePosition(sqt->CurrentPosition(), -1);
+				MoveImeCarets(- sqt->CurrentPosition() + oneCharBefore);
+			}
+#endif
 			sqt->view.imeCaretBlockOverride = true;
 		}
 
