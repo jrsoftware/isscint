@@ -1,13 +1,16 @@
 // Unit Tests for Scintilla internal data structures
 
-#include <string.h>
+#include <cstring>
 
 #include <stdexcept>
+#include <vector>
 #include <algorithm>
+#include <memory>
 
 #include "Platform.h"
 
 #include "Position.h"
+#include "UniqueString.h"
 #include "SplitVector.h"
 #include "Partitioning.h"
 #include "RunStyles.h"
@@ -67,10 +70,10 @@ TEST_CASE("ContractionState") {
 
 		cs.SetVisible(1, 1, false);
 		REQUIRE(true == cs.GetVisible(0));
-		REQUIRE(0 == cs.GetVisible(1));
+		REQUIRE(false == cs.GetVisible(1));
 		REQUIRE(true == cs.GetVisible(2));
 		REQUIRE(4 == cs.LinesDisplayed());
-		REQUIRE(1 == cs.HiddenLines());
+		REQUIRE(true == cs.HiddenLines());
 
 		cs.SetVisible(1, 2, true);
 		for (int l=0;l<4;l++) {
@@ -78,12 +81,12 @@ TEST_CASE("ContractionState") {
 		}
 
 		cs.SetVisible(1, 1, false);
-		REQUIRE(0 == cs.GetVisible(1));
+		REQUIRE(false == cs.GetVisible(1));
 		cs.ShowAll();
 		for (int l=0;l<4;l++) {
 			REQUIRE(true == cs.GetVisible(0));
 		}
-		REQUIRE(0 == cs.HiddenLines());
+		REQUIRE(false == cs.HiddenLines());
 	}
 
 	SECTION("Hidden") {
@@ -91,18 +94,18 @@ TEST_CASE("ContractionState") {
 		for (int l=0;l<2;l++) {
 			REQUIRE(true == cs.GetVisible(0));
 		}
-		REQUIRE(0 == cs.HiddenLines());
+		REQUIRE(false == cs.HiddenLines());
 
 		cs.SetVisible(1, 1, false);
 		REQUIRE(true == cs.GetVisible(0));
-		REQUIRE(0 == cs.GetVisible(1));
-		REQUIRE(1 == cs.HiddenLines());
+		REQUIRE(false == cs.GetVisible(1));
+		REQUIRE(true == cs.HiddenLines());
 
 		cs.SetVisible(1, 1, true);
 		for (int l=0;l<2;l++) {
 			REQUIRE(true == cs.GetVisible(0));
 		}
-		REQUIRE(0 == cs.HiddenLines());
+		REQUIRE(false == cs.HiddenLines());
 	}
 
 	SECTION("Contracting") {
@@ -113,7 +116,7 @@ TEST_CASE("ContractionState") {
 
 		cs.SetExpanded(2, false);
 		REQUIRE(true == cs.GetExpanded(1));
-		REQUIRE(0 == cs.GetExpanded(2));
+		REQUIRE(false == cs.GetExpanded(2));
 		REQUIRE(true == cs.GetExpanded(3));
 
 		REQUIRE(2 == cs.ContractedNext(0));
@@ -137,6 +140,16 @@ TEST_CASE("ContractionState") {
 		REQUIRE(1 == cs.GetHeight(0));
 		REQUIRE(2 == cs.GetHeight(1));
 		REQUIRE(1 == cs.GetHeight(2));
+	}
+
+	SECTION("SetFoldDisplayText") {
+		cs.InsertLines(0, 4);
+		cs.SetFoldDisplayText(1, "abc");
+		REQUIRE(strcmp(cs.GetFoldDisplayText(1), "abc") == 0);
+		cs.SetFoldDisplayText(1, "def");
+		REQUIRE(strcmp(cs.GetFoldDisplayText(1), "def") == 0);
+		cs.SetFoldDisplayText(1, nullptr);
+		REQUIRE(static_cast<const char *>(nullptr) == cs.GetFoldDisplayText(1));
 	}
 
 }

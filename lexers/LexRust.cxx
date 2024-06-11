@@ -123,29 +123,29 @@ class LexerRust : public ILexer {
 public:
 	virtual ~LexerRust() {
 	}
-	void SCI_METHOD Release() {
+	void SCI_METHOD Release() override {
 		delete this;
 	}
-	int SCI_METHOD Version() const {
+	int SCI_METHOD Version() const override {
 		return lvOriginal;
 	}
-	const char * SCI_METHOD PropertyNames() {
+	const char * SCI_METHOD PropertyNames() override {
 		return osRust.PropertyNames();
 	}
-	int SCI_METHOD PropertyType(const char *name) {
+	int SCI_METHOD PropertyType(const char *name) override {
 		return osRust.PropertyType(name);
 	}
-	const char * SCI_METHOD DescribeProperty(const char *name) {
+	const char * SCI_METHOD DescribeProperty(const char *name) override {
 		return osRust.DescribeProperty(name);
 	}
-	Sci_Position SCI_METHOD PropertySet(const char *key, const char *val);
-	const char * SCI_METHOD DescribeWordListSets() {
+	Sci_Position SCI_METHOD PropertySet(const char *key, const char *val) override;
+	const char * SCI_METHOD DescribeWordListSets() override {
 		return osRust.DescribeWordListSets();
 	}
-	Sci_Position SCI_METHOD WordListSet(int n, const char *wl);
-	void SCI_METHOD Lex(Sci_PositionU startPos, Sci_Position length, int initStyle, IDocument *pAccess);
-	void SCI_METHOD Fold(Sci_PositionU startPos, Sci_Position length, int initStyle, IDocument *pAccess);
-	void * SCI_METHOD PrivateCall(int, void *) {
+	Sci_Position SCI_METHOD WordListSet(int n, const char *wl) override;
+	void SCI_METHOD Lex(Sci_PositionU startPos, Sci_Position length, int initStyle, IDocument *pAccess) override;
+	void SCI_METHOD Fold(Sci_PositionU startPos, Sci_Position length, int initStyle, IDocument *pAccess) override;
+	void * SCI_METHOD PrivateCall(int, void *) override {
 		return 0;
 	}
 	static ILexer *LexerFactoryRust() {
@@ -339,7 +339,7 @@ static bool IsOneCharOperator(int c) {
 	    || c == '*' || c == '/' || c == '^' || c == '%'
 	    || c == '.' || c == ':' || c == '!' || c == '<'
 	    || c == '>' || c == '=' || c == '-' || c == '&'
-	    || c == '|' || c == '$';
+	    || c == '|' || c == '$' || c == '?';
 }
 
 static bool IsTwoCharOperator(int c, int n) {
@@ -407,7 +407,18 @@ static void ScanCharacterLiteralOrLifetime(Accessor &styler, Sci_Position& pos, 
 					valid_char = ScanNumericEscape(styler, pos, 2, false);
 				} else if (n == 'u' && !ascii_only) {
 					pos += 2;
-					valid_char = ScanNumericEscape(styler, pos, 4, false);
+					if (styler.SafeGetCharAt(pos, '\0') != '{') {
+						// old-style
+						valid_char = ScanNumericEscape(styler, pos, 4, false);
+					} else {
+						int n_digits = 0;
+						while (IsADigit(styler.SafeGetCharAt(++pos, '\0'), 16) && n_digits++ < 6) {
+						}
+						if (n_digits > 0 && styler.SafeGetCharAt(pos, '\0') == '}')
+							pos++;
+						else
+							valid_char = false;
+					}
 				} else if (n == 'U' && !ascii_only) {
 					pos += 2;
 					valid_char = ScanNumericEscape(styler, pos, 8, false);
@@ -579,7 +590,18 @@ static void ResumeString(Accessor &styler, Sci_Position& pos, Sci_Position max, 
 				error = !ScanNumericEscape(styler, pos, 2, true);
 			} else if (n == 'u' && !ascii_only) {
 				pos += 2;
-				error = !ScanNumericEscape(styler, pos, 4, true);
+				if (styler.SafeGetCharAt(pos, '\0') != '{') {
+					// old-style
+					error = !ScanNumericEscape(styler, pos, 4, true);
+				} else {
+					int n_digits = 0;
+					while (IsADigit(styler.SafeGetCharAt(++pos, '\0'), 16) && n_digits++ < 6) {
+					}
+					if (n_digits > 0 && styler.SafeGetCharAt(pos, '\0') == '}')
+						pos++;
+					else
+						error = true;
+				}
 			} else if (n == 'U' && !ascii_only) {
 				pos += 2;
 				error = !ScanNumericEscape(styler, pos, 8, true);
