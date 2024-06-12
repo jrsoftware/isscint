@@ -130,11 +130,7 @@ static ScintillaRectangularMime *singletonMime = 0;
 
 void ScintillaQt::Init()
 {
-#if defined(Q_OS_WIN) || defined(Q_OS_MAC)
 	rectangularSelectionModifier = SCMOD_ALT;
-#else
-	rectangularSelectionModifier = SCMOD_CTRL;
-#endif
 
 #if defined(Q_OS_MAC) && QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 	if (!singletonMime) {
@@ -401,12 +397,13 @@ void ScintillaQt::NotifyParent(SCNotification scn)
 	emit notifyParent(scn);
 }
 
-/**
-* Report that this Editor subclass has a working implementation of FineTickerStart.
-*/
-bool ScintillaQt::FineTickerAvailable()
+void ScintillaQt::NotifyURIDropped(const char *uri)
 {
-	return true;
+	SCNotification scn = {};
+	scn.nmhdr.code = SCN_URIDROPPED;
+	scn.text = uri;
+
+	NotifyParent(scn);
 }
 
 bool ScintillaQt::FineTickerRunning(TickReason reason)
@@ -754,6 +751,13 @@ void ScintillaQt::Drop(const Point &point, const QMimeData *data, bool move)
 				false, false, UserVirtualSpace());
 
 	DropAt(movePos, bytes, len, move, rectangular);
+}
+
+void ScintillaQt::DropUrls(const QMimeData *data)
+{
+	foreach(const QUrl &url, data->urls()) {
+		NotifyURIDropped(url.toString().toUtf8().constData());
+	}
 }
 
 void ScintillaQt::timerEvent(QTimerEvent *event)

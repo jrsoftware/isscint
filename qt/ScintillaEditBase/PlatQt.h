@@ -13,6 +13,7 @@
 
 #include "Platform.h"
 
+#include <QUrl>
 #include <QPaintDevice>
 #include <QPainter>
 #include <QHash>
@@ -106,7 +107,6 @@ public:
 	XYPOSITION Ascent(Font &font) override;
 	XYPOSITION Descent(Font &font) override;
 	XYPOSITION InternalLeading(Font &font) override;
-	XYPOSITION ExternalLeading(Font &font) override;
 	XYPOSITION Height(Font &font) override;
 	XYPOSITION AverageCharWidth(Font &font) override;
 
