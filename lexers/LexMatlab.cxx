@@ -1,7 +1,8 @@
 // Scintilla source code edit control
+// Encoding: UTF-8
 /** @file LexMatlab.cxx
  ** Lexer for Matlab.
- ** Written by José Fonseca
+ ** Written by JosÃ© Fonseca
  **
  ** Changes by Christoph Dalitz 2003/12/04:
  **   - added support for Octave
@@ -43,9 +44,7 @@
 #include "CharacterSet.h"
 #include "LexerModule.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 static bool IsMatlabCommentChar(int c) {
 	return (c == '%') ;
@@ -65,6 +64,7 @@ static int CheckKeywordFoldPoint(char *str) {
 	if (strcmp ("if", str) == 0 ||
 		strcmp ("for", str) == 0 ||
 		strcmp ("switch", str) == 0 ||
+		strcmp ("while", str) == 0 ||
 		strcmp ("try", str) == 0 ||
 		strcmp ("do", str) == 0 ||
 		strcmp ("parfor", str) == 0 ||
@@ -155,7 +155,7 @@ static void ColouriseMatlabOctaveDoc(
 		} else if (sc.state == SCE_MATLAB_KEYWORD) {
 			if (!isalnum(sc.ch) && sc.ch != '_') {
 				char s[100];
-				sc.GetCurrentLowered(s, sizeof(s));
+				sc.GetCurrent(s, sizeof(s));
 
 				if (keywords.InList(s)) {
 					if (strcmp ("end", s) == 0 && allow_end_op) {

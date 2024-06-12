@@ -31,9 +31,7 @@
 #include "OptionSet.h"
 #include "DefaultLexer.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 static const int NUM_RUST_KEYWORD_LISTS = 7;
 static const int MAX_RUST_IDENT_CHARS = 1023;
@@ -122,13 +120,15 @@ class LexerRust : public DefaultLexer {
 	OptionsRust options;
 	OptionSetRust osRust;
 public:
+	LexerRust() : DefaultLexer("rust", SCLEX_RUST) {
+	}
 	virtual ~LexerRust() {
 	}
 	void SCI_METHOD Release() override {
 		delete this;
 	}
 	int SCI_METHOD Version() const override {
-		return lvRelease4;
+		return lvRelease5;
 	}
 	const char * SCI_METHOD PropertyNames() override {
 		return osRust.PropertyNames();
@@ -140,6 +140,9 @@ public:
 		return osRust.DescribeProperty(name);
 	}
 	Sci_Position SCI_METHOD PropertySet(const char *key, const char *val) override;
+	const char * SCI_METHOD PropertyGet(const char *key) override {
+		return osRust.PropertyGet(key);
+	}
 	const char * SCI_METHOD DescribeWordListSets() override {
 		return osRust.DescribeWordListSets();
 	}
@@ -149,7 +152,7 @@ public:
 	void * SCI_METHOD PrivateCall(int, void *) override {
 		return 0;
 	}
-	static ILexer4 *LexerFactoryRust() {
+	static ILexer5 *LexerFactoryRust() {
 		return new LexerRust();
 	}
 };

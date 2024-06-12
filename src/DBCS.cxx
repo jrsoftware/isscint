@@ -7,17 +7,13 @@
 
 #include "DBCS.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
-#ifdef SCI_NAMESPACE
 namespace Scintilla {
-#endif
 
-bool DBCSIsLeadByte(int codePage, char ch) {
+bool DBCSIsLeadByte(int codePage, char ch) noexcept {
 	// Byte ranges found in Wikipedia articles with relevant search strings in each case
-	const unsigned char uch = static_cast<unsigned char>(ch);
+	const unsigned char uch = ch;
 	switch (codePage) {
 	case 932:
 		// Shift_jis
@@ -43,6 +39,4 @@ bool DBCSIsLeadByte(int codePage, char ch) {
 	return false;
 }
 
-#ifdef SCI_NAMESPACE
 }
-#endif

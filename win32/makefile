@@ -1,79 +1,87 @@
 # Make file for Scintilla on Windows
+# @file makefile
 # Copyright 1998-2010 by Neil Hodgson <neilh@scintilla.org>
 # The License.txt file describes the conditions under which this software may be distributed.
-# This makefile assumes the Mingw-w64 version of GCC 7.1+ is used and changes will
-# be needed to use other compilers.
+# This makefile assumes Mingw-w64 GCC 9.0+ is used and changes will be needed to use other compilers.
+# Clang 9.0+ can be used with CLANG=1 on command line.
+
+.PHONY: all clean analyze depend
+
+.SUFFIXES: .cxx .c .o .h .a
+
+DIR_BIN=../bin
+
+COMPONENT = $(DIR_BIN)/Scintilla.dll
+LEXCOMPONENT = $(DIR_BIN)/SciLexer.dll
+LIBSCI = $(DIR_BIN)/libscintilla.a
+
+WARNINGS = -Wpedantic -Wall
 
 ifdef CLANG
-# Common location for 32-bit clang on Windows
-CXX = "C:\Program Files (x86)\LLVM\bin\clang++"
-CXXSTD = c++14
+CXX = clang++
+DEFINES += -D_CRT_SECURE_NO_DEPRECATE
 else
 # MinGW GCC
-LDMINGW = -Wl,--enable-runtime-pseudo-reloc-v2 -Wl,--add-stdcall-alias
 LIBSMINGW = -lstdc++
 STRIPOPTION = -s
-CXXSTD = gnu++17
 endif
-
-.SUFFIXES: .cxx
-ifeq ($(OS),Windows_NT)
-DEL = del /q
-else
-DEL = rm -f
-endif
+ARFLAGS = rc
 RANLIB ?= ranlib
 WINDRES ?= windres
 
-COMPONENT = ../bin/Scintilla.dll
-LEXCOMPONENT = ../bin/SciLexer.dll
-LEXLIB = Lexers.a
+# Environment variable windir always defined on Win32
+
+# Take care of changing Unix style '/' directory separator to '\' on Windows
+normalize = $(if $(windir),$(subst /,\,$1),$1)
+
+ifdef windir
+DEL = $(if $(wildcard $(dir $(SHELL))rm.exe), $(dir $(SHELL))rm.exe -f, del /q)
+else
+DEL = rm -f
+endif
 
 vpath %.h ../src ../include ../lexlib
 vpath %.cxx ../src ../lexlib ../lexers
 
-LDFLAGS=-shared -static -mwindows $(LDMINGW)
+LDFLAGS=-shared -static -mwindows
 LIBS=-lgdi32 -luser32 -limm32 -lole32 -luuid -loleaut32 -lmsimg32 $(LIBSMINGW)
-# Add -MMD to get dependencies
-INCLUDEDIRS=-I ../include -I ../src -I../lexlib
 
-# Check if Direct2D headers are available by trying to compile a file that includes them.
-# Most distributions of MinGW32 do not include Direct2D support but MinGW64 does.
-ifneq "$(shell $(CXX) -c CheckD2D.cxx 2>&1)" ""
-D2DFLAGS=-DDISABLE_D2D
-endif
+INCLUDES=-I ../include -I ../src -I../lexlib
 
-CXXBASEFLAGS=--std=$(CXXSTD) -Wall -pedantic $(INCLUDEDIRS) $(D2DFLAGS) -D_CRT_SECURE_NO_DEPRECATE=1
+BASE_FLAGS += $(WARNINGS)
 
 ifdef NO_CXX11_REGEX
-REFLAGS=-DNO_CXX11_REGEX
+DEFINES += -DNO_CXX11_REGEX
 endif
 
-ifdef DEBUG
-CXXFLAGS=-DDEBUG -g $(CXXBASEFLAGS)
-else
-CXXFLAGS=-DNDEBUG -Os $(CXXBASEFLAGS)
+DEFINES += -D$(if $(DEBUG),DEBUG,NDEBUG)
+BASE_FLAGS += $(if $(DEBUG),-g,-Os)
+
+ifndef DEBUG
 STRIPFLAG=$(STRIPOPTION)
 endif
 
-.cxx.o:
-	$(CXX) $(CXXFLAGS) $(REFLAGS) -c $<
+CXX_BASE_FLAGS =--std=c++17 $(BASE_FLAGS)
+CXX_ALL_FLAGS =$(DEFINES) $(INCLUDES) $(CXX_BASE_FLAGS)
 
-ALL:	$(COMPONENT) $(LEXCOMPONENT) $(LEXLIB) ScintillaWinS.o
+all:	$(COMPONENT) $(LEXCOMPONENT) $(LIBSCI)
 
 clean:
-	$(DEL) *.exe *.o *.obj *.dll *.res *.map *.plist
+	$(DEL) *.exe *.o *.a *.obj *.dll *.res *.map *.plist $(call normalize,$(LIBSCI))
+
+%.o: %.cxx
+	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -c $<
 
 analyze:
-	$(CXX) --analyze $(D2DFLAGS) $(CXXFLAGS) *.cxx ../src/*.cxx ../lexlib/*.cxx ../lexers/*.cxx
+	$(CXX) --analyze $(CXX_ALL_FLAGS) $(CXXFLAGS) *.cxx ../src/*.cxx ../lexlib/*.cxx ../lexers/*.cxx
 
-deps:
-	$(CXX) -MM $(CXXFLAGS) *.cxx ../src/*.cxx ../lexlib/*.cxx ../lexers/*.cxx >deps.mak
+depend deps.mak:
+	python DepGen.py
 
-LEXOBJS:=$(addsuffix .o,$(basename $(sort $(notdir $(wildcard ../lexers/Lex*.cxx)))))
+LEX_OBJS:=$(addsuffix .o,$(basename $(sort $(notdir $(wildcard ../lexers/Lex*.cxx)))))
 
-
-BASEOBJS = \
+# Required for base Scintilla
+SRC_OBJS = \
 	AutoComplete.o \
 	CallTip.o \
 	CaseConvert.o \
@@ -89,96 +97,85 @@ BASEOBJS = \
 	EditModel.o \
 	Editor.o \
 	EditView.o \
-	KeyMap.o \
 	Indicator.o \
+	KeyMap.o \
 	LineMarker.o \
 	MarginView.o \
 	PerLine.o \
-	PlatWin.o \
 	PositionCache.o \
 	PropSetSimple.o \
 	RESearch.o \
 	RunStyles.o \
-	ScintRes.o \
 	Selection.o \
 	Style.o \
 	UniConversion.o \
+	UniqueString.o \
 	ViewStyle.o \
-	XPM.o \
-	HanjaDic.o
+	XPM.o
 
-SOBJS = ScintillaWin.o ScintillaBase.o $(BASEOBJS)
-
-$(COMPONENT): $(SOBJS) Scintilla.def
-	$(CXX) $(LDFLAGS) -o $@ $(STRIPFLAG) $(SOBJS) $(CXXFLAGS) $(LIBS)
-
-LOBJS = \
+# Required by lexers
+LEXLIB_OBJS = \
 	Accessor.o \
-	Catalogue.o \
-	ExternalLexer.o \
+	CatalogueL.o \
 	DefaultLexer.o \
+	ExternalLexer.o \
 	LexerBase.o \
 	LexerModule.o \
 	LexerSimple.o \
-	ScintillaWinL.o \
-	ScintillaBaseL.o \
 	StyleContext.o \
-	WordList.o \
-	$(BASEOBJS) \
-	$(LEXOBJS)
-$(LEXCOMPONENT): $(LOBJS) Scintilla.def
-	$(CXX) $(LDFLAGS) -o $@ $(STRIPFLAG) $(LOBJS) $(CXXFLAGS) $(LIBS)
+	WordList.o
 
-$(LEXLIB): $(LEXOBJS)
-	$(AR) rc $@ $^
+# Required by libraries and DLLs that include lexing
+SCILEX_OBJS=\
+	$(SRC_OBJS) \
+	$(LEXLIB_OBJS) \
+	$(LEX_OBJS) \
+	HanjaDic.o \
+	PlatWin.o \
+	ScintillaBaseL.o \
+	ScintillaWin.o
+
+COMPONENT_OBJS = \
+	$(SRC_OBJS) \
+	Accessor.o \
+	Catalogue.o \
+	HanjaDic.o \
+	LexerBase.o \
+	LexerModule.o \
+	LexerSimple.o \
+	PlatWin.o \
+	ScintillaBase.o \
+	ScintillaDLL.o \
+	ScintillaWin.o \
+	ScintRes.o \
+	WordList.o
+
+LEXCOMPONENT_OBJS = \
+	$(SCILEX_OBJS) \
+	ScintillaDLL.o \
+	ScintRes.o
+
+$(COMPONENT): $(COMPONENT_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $(STRIPFLAG) $^ $(CXXFLAGS) $(LIBS)
+
+$(LEXCOMPONENT): $(LEXCOMPONENT_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $(STRIPFLAG) $^ $(CXXFLAGS) $(LIBS)
+
+$(LIBSCI): $(SCILEX_OBJS)
+	$(AR) $(ARFLAGS) $@ $^
 	$(RANLIB) $@
 
 # Automatically generate dependencies for most files with "make deps"
 include deps.mak
 
-# These dependencies are maintained by hand as they do not use the default output name
-
-ScintillaBaseL.o: ScintillaBase.cxx Platform.h \
- ILexer.h Scintilla.h SciLexer.h PropSetSimple.h \
- SplitVector.h Partitioning.h RunStyles.h \
- ContractionState.h CellBuffer.h CallTip.h \
- KeyMap.h Indicator.h XPM.h LineMarker.h \
- Style.h ViewStyle.h AutoComplete.h \
- CharClassify.h Decoration.h Document.h \
- Selection.h PositionCache.h EditModel.h Editor.h EditView.h \
- ScintillaBase.h LexAccessor.h Accessor.h \
- LexerModule.h Catalogue.h CaseFolder.h
-
-ScintillaWinL.o: ScintillaWin.cxx Platform.h \
- ILexer.h Scintilla.h SplitVector.h \
- Partitioning.h RunStyles.h ContractionState.h \
- CellBuffer.h CallTip.h KeyMap.h Indicator.h \
- XPM.h LineMarker.h Style.h AutoComplete.h \
- ViewStyle.h CharClassify.h Decoration.h \
- Document.h Selection.h PositionCache.h \
- EditModel.h Editor.h EditView.h ScintillaBase.h UniConversion.h \
- LexAccessor.h Accessor.h \
- LexerModule.h Catalogue.h CaseConvert.h \
- CaseFolder.h
-
-ScintillaWinS.o: ScintillaWin.cxx Platform.h \
- ILexer.h Scintilla.h SplitVector.h \
- Partitioning.h RunStyles.h ContractionState.h \
- CellBuffer.h CallTip.h KeyMap.h Indicator.h \
- XPM.h LineMarker.h Style.h AutoComplete.h \
- ViewStyle.h CharClassify.h Decoration.h \
- Document.h Selection.h PositionCache.h \
- EditModel.h Editor.h EditView.h ScintillaBase.h UniConversion.h \
- CaseConvert.h CaseFolder.h
-
 ScintillaBaseL.o:
-	$(CXX) $(CXXFLAGS) -D SCI_LEXER -c $< -o $@
+	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -D SCI_LEXER -c $< -o $@
 
-ScintillaWinS.o:
-	$(CXX) $(CXXFLAGS) -D STATIC_BUILD -c $< -o $@
+Catalogue.o: Catalogue.cxx
+	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -D SCI_LEXER -D SCI_EMPTYCATALOGUE -c $< -o $@
 
-ScintillaWinL.o:
-	$(CXX) $(CXXFLAGS) -D SCI_LEXER -c $< -o $@
+CatalogueL.o: Catalogue.cxx
+	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -D SCI_LEXER -c $< -o $@
 
 ScintRes.o:	ScintRes.rc
 	$(WINDRES) ScintRes.rc $@

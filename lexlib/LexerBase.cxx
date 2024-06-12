@@ -20,9 +20,7 @@
 #include "LexerModule.h"
 #include "LexerBase.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 static const char styleSubable[] = { 0 };
 
@@ -46,7 +44,7 @@ void SCI_METHOD LexerBase::Release() {
 }
 
 int SCI_METHOD LexerBase::Version() const {
-	return lvRelease4;
+	return lvRelease5;
 }
 
 const char * SCI_METHOD LexerBase::PropertyNames() {
@@ -64,11 +62,15 @@ const char * SCI_METHOD LexerBase::DescribeProperty(const char *) {
 Sci_Position SCI_METHOD LexerBase::PropertySet(const char *key, const char *val) {
 	const char *valOld = props.Get(key);
 	if (strcmp(val, valOld) != 0) {
-		props.Set(key, val);
+		props.Set(key, val, strlen(key), strlen(val));
 		return 0;
 	} else {
 		return -1;
 	}
+}
+
+const char *SCI_METHOD LexerBase::PropertyGet(const char *key) {
+	return props.Get(key);
 }
 
 const char * SCI_METHOD LexerBase::DescribeWordListSets() {
@@ -77,10 +79,7 @@ const char * SCI_METHOD LexerBase::DescribeWordListSets() {
 
 Sci_Position SCI_METHOD LexerBase::WordListSet(int n, const char *wl) {
 	if (n < numWordLists) {
-		WordList wlNew;
-		wlNew.Set(wl);
-		if (*keyWordLists[n] != wlNew) {
-			keyWordLists[n]->Set(wl);
+		if (keyWordLists[n]->Set(wl)) {
 			return 0;
 		}
 	}
@@ -143,4 +142,14 @@ const char * SCI_METHOD LexerBase::TagsOfStyle(int style) {
 
 const char * SCI_METHOD LexerBase::DescriptionOfStyle(int style) {
 	return (style < NamedStyles()) ? lexClasses[style].description : "";
+}
+
+// ILexer5 methods
+
+const char *SCI_METHOD LexerBase::GetName() {
+	return "";
+}
+
+int SCI_METHOD LexerBase::GetIdentifier() {
+	return SCLEX_AUTOMATIC;
 }

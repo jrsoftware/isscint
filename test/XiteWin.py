@@ -4,7 +4,7 @@
 from __future__ import with_statement
 from __future__ import unicode_literals
 
-import os, sys, unittest
+import os, platform, sys, unittest
 
 import ctypes
 from ctypes import wintypes
@@ -25,8 +25,6 @@ sys.path.append(scintillaScriptsDirectory)
 import Face
 
 scintillaBinDirectory = os.path.join(scintillaDirectory, "bin")
-os.environ['PATH'] = os.environ['PATH']  + ";" + scintillaBinDirectory
-#print(os.environ['PATH'])
 
 WFUNC = ctypes.WINFUNCTYPE(c_int, HWND, c_uint, WPARAM, LPARAM)
 
@@ -150,6 +148,8 @@ class XiteWin():
 
 		self.appName = "xite"
 
+		self.large = "-large" in sys.argv
+
 		self.cmds = {}
 		self.windowName = "XiteWindow"
 		self.wfunc = WFUNC(self.WndProc)
@@ -158,7 +158,7 @@ class XiteWin():
 			WS_VISIBLE | WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, \
 			0, 0, 500, 700, 0, 0, hinst, 0)
 
-		args = sys.argv[1:]
+		args = [a for a in sys.argv[1:] if not a.startswith("-")]
 		self.SetMenus()
 		if args:
 			self.GrabFile(args[0])
@@ -181,11 +181,12 @@ class XiteWin():
 
 	def OnCreate(self, hwnd):
 		self.win = hwnd
-		# Side effect: loads the DLL
 		try:
-			x = ctypes.windll.SciLexer.Scintilla_DirectFunction
+			scintillaDLLPath = os.path.join(scintillaBinDirectory, "SciLexer.DLL")
+			ctypes.cdll.LoadLibrary(scintillaDLLPath)
 		except OSError:
 			print("Can't find SciLexer.DLL")
+			print("Python is built for " + " ".join(platform.architecture()))
 			sys.exit()
 		self.sciHwnd = user32.CreateWindowExW(0,
 			"Scintilla", "Source",
@@ -198,6 +199,9 @@ class XiteWin():
 		sciptr = c_char_p(user32.SendMessageW(self.sciHwnd,
 			int(self.face.features["GetDirectPointer"]["Value"], 0), 0,0))
 		self.ed = ScintillaCallable.ScintillaCallable(self.face, scifn, sciptr)
+		if self.large:
+			doc = self.ed.CreateDocument(10, 0x100)
+			self.ed.SetDocPointer(0, doc)
 
 		self.FocusOnEditor()
 

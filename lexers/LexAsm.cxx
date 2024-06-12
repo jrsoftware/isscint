@@ -32,9 +32,7 @@
 #include "OptionSet.h"
 #include "DefaultLexer.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 static inline bool IsAWordChar(const int ch) {
 	return (ch < 0x80) && (isalnum(ch) || ch == '.' ||
@@ -153,7 +151,7 @@ class LexerAsm : public DefaultLexer {
 	OptionSetAsm osAsm;
 	int commentChar;
 public:
-	LexerAsm(int commentChar_) {
+	LexerAsm(const char *languageName_, int language_, int commentChar_) : DefaultLexer(languageName_, language_) {
 		commentChar = commentChar_;
 	}
 	virtual ~LexerAsm() {
@@ -162,7 +160,7 @@ public:
 		delete this;
 	}
 	int SCI_METHOD Version() const override {
-		return lvRelease4;
+		return lvRelease5;
 	}
 	const char * SCI_METHOD PropertyNames() override {
 		return osAsm.PropertyNames();
@@ -174,6 +172,9 @@ public:
 		return osAsm.DescribeProperty(name);
 	}
 	Sci_Position SCI_METHOD PropertySet(const char *key, const char *val) override;
+	const char * SCI_METHOD PropertyGet(const char *key) override {
+		return osAsm.PropertyGet(key);
+	}
 	const char * SCI_METHOD DescribeWordListSets() override {
 		return osAsm.DescribeWordListSets();
 	}
@@ -185,12 +186,12 @@ public:
 		return 0;
 	}
 
-	static ILexer4 *LexerFactoryAsm() {
-		return new LexerAsm(';');
+	static ILexer5 *LexerFactoryAsm() {
+		return new LexerAsm("asm", SCLEX_ASM, ';');
 	}
 
-	static ILexer4 *LexerFactoryAs() {
-		return new LexerAsm('#');
+	static ILexer5 *LexerFactoryAs() {
+		return new LexerAsm("as", SCLEX_AS, '#');
 	}
 };
 

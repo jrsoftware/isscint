@@ -3,6 +3,7 @@
 // Copyright (c) 2011 Archaeopteryx Software, Inc. d/b/a Wingware
 
 #include <stdexcept>
+#include <string_view>
 #include <vector>
 #include <map>
 #include <memory>
@@ -11,9 +12,11 @@
 
 #include "Platform.h"
 
+#include "ILoader.h"
 #include "ILexer.h"
 #include "Scintilla.h"
 
+#include "CharacterCategory.h"
 #include "Position.h"
 #include "UniqueString.h"
 #include "SplitVector.h"
@@ -23,7 +26,6 @@
 #include "CellBuffer.h"
 #include "KeyMap.h"
 #include "Indicator.h"
-#include "XPM.h"
 #include "LineMarker.h"
 #include "Style.h"
 #include "ViewStyle.h"
@@ -32,9 +34,7 @@
 #include "CaseFolder.h"
 #include "Document.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 class WatcherHelper : public DocWatcher {
     ScintillaDocument *owner;
@@ -42,13 +42,13 @@ public:
     explicit WatcherHelper(ScintillaDocument *owner_);
     virtual ~WatcherHelper();
 
-    void NotifyModifyAttempt(Document *doc, void *userData);
-    void NotifySavePoint(Document *doc, void *userData, bool atSavePoint);
-    void NotifyModified(Document *doc, DocModification mh, void *userData);
-    void NotifyDeleted(Document *doc, void *userData);
+    void NotifyModifyAttempt(Document *doc, void *userData) override;
+    void NotifySavePoint(Document *doc, void *userData, bool atSavePoint) override;
+    void NotifyModified(Document *doc, DocModification mh, void *userData) override;
+    void NotifyDeleted(Document *doc, void *userData) noexcept override;
     void NotifyStyleNeeded(Document *doc, void *userData, Sci::Position endPos);
-    void NotifyLexerChanged(Document *doc, void *userData);
-    void NotifyErrorOccurred(Document *doc, void *userData, int status);
+    void NotifyLexerChanged(Document *doc, void *userData) override;
+    void NotifyErrorOccurred(Document *doc, void *userData, int status) override;
 };
 
 WatcherHelper::WatcherHelper(ScintillaDocument *owner_) : owner(owner_) {
@@ -74,7 +74,7 @@ void WatcherHelper::NotifyModified(Document *, DocModification mh, void *) {
                          mh.linesAdded, mh.line, mh.foldLevelNow, mh.foldLevelPrev);
 }
 
-void WatcherHelper::NotifyDeleted(Document *, void *) {
+void WatcherHelper::NotifyDeleted(Document *, void *) noexcept {
 }
 
 void WatcherHelper::NotifyStyleNeeded(Document *, void *, Sci::Position endPos) {
@@ -92,7 +92,7 @@ void WatcherHelper::NotifyErrorOccurred(Document *, void *, int status) {
 ScintillaDocument::ScintillaDocument(QObject *parent, void *pdoc_) :
     QObject(parent), pdoc(pdoc_), docWatcher(0) {
     if (!pdoc) {
-        pdoc = new Document();
+        pdoc = new Document(SC_DOCUMENTOPTION_DEFAULT);
     }
     docWatcher = new WatcherHelper(this);
     (static_cast<Document *>(pdoc))->AddRef();
@@ -234,7 +234,7 @@ void ScintillaDocument::ensure_styled_to(int position) {
 }
 
 void ScintillaDocument::set_current_indicator(int indic) {
-    (static_cast<Document *>(pdoc))->decorations.SetCurrentIndicator(indic);
+    (static_cast<Document *>(pdoc))->decorations->SetCurrentIndicator(indic);
 }
 
 void ScintillaDocument::decoration_fill_range(int position, int value, int fillLength) {
@@ -242,15 +242,15 @@ void ScintillaDocument::decoration_fill_range(int position, int value, int fillL
 }
 
 int ScintillaDocument::decorations_value_at(int indic, int position) {
-    return (static_cast<Document *>(pdoc))->decorations.ValueAt(indic, position);
+    return (static_cast<Document *>(pdoc))->decorations->ValueAt(indic, position);
 }
 
 int ScintillaDocument::decorations_start(int indic, int position) {
-    return (static_cast<Document *>(pdoc))->decorations.Start(indic, position);
+    return (static_cast<Document *>(pdoc))->decorations->Start(indic, position);
 }
 
 int ScintillaDocument::decorations_end(int indic, int position) {
-    return (static_cast<Document *>(pdoc))->decorations.End(indic, position);
+    return (static_cast<Document *>(pdoc))->decorations->End(indic, position);
 }
 
 int ScintillaDocument::get_code_page() {

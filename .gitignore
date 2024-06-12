@@ -2,6 +2,7 @@ buildsettings.bat
 compilesettings.bat
 *.o
 *.a
+*.asm
 *.lib
 *.obj
 *.iobj
@@ -10,6 +11,7 @@ compilesettings.bat
 *.dylib
 *.framework
 *.pyd
+*.exe
 *.exp
 *.lib
 *.pdb
@@ -61,3 +63,9 @@ ScintillaEditBase.intermediate.manifest
 ScintillaEdit.intermediate.manifest
 qt/*/Makefile
 cov-int
+.vs
+meson-private
+meson-logs
+build.ninja
+.ninja*
+compile_commands.json

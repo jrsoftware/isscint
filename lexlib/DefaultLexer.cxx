@@ -20,14 +20,16 @@
 #include "LexerModule.h"
 #include "DefaultLexer.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 static const char styleSubable[] = { 0 };
 
-DefaultLexer::DefaultLexer(const LexicalClass *lexClasses_, size_t nClasses_) :
-	lexClasses(lexClasses_), nClasses(nClasses_) {
+DefaultLexer::DefaultLexer(const char *languageName_, int language_,
+	const LexicalClass *lexClasses_, size_t nClasses_) :
+	languageName(languageName_),
+	language(language_),
+	lexClasses(lexClasses_),
+	nClasses(nClasses_) {
 }
 
 DefaultLexer::~DefaultLexer() {
@@ -38,7 +40,7 @@ void SCI_METHOD DefaultLexer::Release() {
 }
 
 int SCI_METHOD DefaultLexer::Version() const {
-	return lvRelease4;
+	return lvRelease5;
 }
 
 const char * SCI_METHOD DefaultLexer::PropertyNames() {
@@ -125,3 +127,13 @@ const char * SCI_METHOD DefaultLexer::TagsOfStyle(int style) {
 const char * SCI_METHOD DefaultLexer::DescriptionOfStyle(int style) {
 	return (style < NamedStyles()) ? lexClasses[style].description : "";
 }
+
+// ILexer5 methods
+const char * SCI_METHOD DefaultLexer::GetName() {
+	return languageName;
+}
+
+int SCI_METHOD DefaultLexer::GetIdentifier() {
+	return language;
+}
+

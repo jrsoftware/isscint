@@ -36,9 +36,7 @@
 #include "OptionSet.h"
 #include "DefaultLexer.h"
 
-# ifdef SCI_NAMESPACE
 using namespace Scintilla;
-# endif
 
 namespace {
 // Use an unnamed namespace to protect the functions and classes from name conflicts
@@ -144,7 +142,7 @@ static inline int IsAnyOtherIdentifier(char *s, Sci_Position sLength) {
 	switch (sLength) {
 	case 8:
 		if (isalpha(s[0]) && isalpha(s[1]) && isalpha(s[2]) && isalpha(s[3]) && isalpha(s[4]) && IsADigit(s[5]) && IsADigit(s[6]) && IsADigit(s[7])) {
-			//^^^^^### 
+			//^^^^^###
 			return(SCE_BAAN_TABLEDEF);
 		}
 		break;
@@ -395,14 +393,14 @@ class LexerBaan : public DefaultLexer {
 	OptionsBaan options;
 	OptionSetBaan osBaan;
 public:
-	LexerBaan() {
+	LexerBaan() : DefaultLexer("baan", SCLEX_BAAN) {
 	}
 
 	virtual ~LexerBaan() {
 	}
 
 	int SCI_METHOD Version() const override {
-		return lvRelease4;
+		return lvRelease5;
 	}
 
 	void SCI_METHOD Release() override {
@@ -423,6 +421,10 @@ public:
 
 	Sci_Position SCI_METHOD PropertySet(const char *key, const char *val) override;
 
+	const char * SCI_METHOD PropertyGet(const char *key) override {
+		return osBaan.PropertyGet(key);
+	}
+
 	const char * SCI_METHOD DescribeWordListSets() override {
 		return osBaan.DescribeWordListSets();
 	}
@@ -437,7 +439,7 @@ public:
 		return NULL;
 	}
 
-	static ILexer4 * LexerFactoryBaan() {
+	static ILexer5 * LexerFactoryBaan() {
 		return new LexerBaan();
 	}
 };
@@ -510,7 +512,8 @@ void SCI_METHOD LexerBaan::Lex(Sci_PositionU startPos, Sci_Position length, int 
 	char word[1000];
 	int wordlen = 0;
 
-	std::string preProcessorTags[11] = { "#define", "#elif", "#else", "#endif",
+	std::string preProcessorTags[13] = { "#context_off", "#context_on",
+		"#define", "#elif", "#else", "#endif",
 		"#ident", "#if", "#ifdef", "#ifndef",
 		"#include", "#pragma", "#undef" };
 	LexAccessor styler(pAccess);
@@ -523,7 +526,7 @@ void SCI_METHOD LexerBaan::Lex(Sci_PositionU startPos, Sci_Position length, int 
 		case SCE_BAAN_OPERATOR:
 			sc.SetState(SCE_BAAN_DEFAULT);
 			break;
-		case SCE_BAAN_NUMBER: 
+		case SCE_BAAN_NUMBER:
 			if (IsASpaceOrTab(sc.ch) || sc.ch == '\r' || sc.ch == '\n' || IsAnOperator(sc.ch)) {
 				sc.SetState(SCE_BAAN_DEFAULT);
 			}
@@ -568,7 +571,10 @@ void SCI_METHOD LexerBaan::Lex(Sci_PositionU startPos, Sci_Position length, int 
 					sc.ChangeState(SCE_BAAN_WORD2);
 				}
 				else if ((keywords3.kwHasSection && (sc.ch == ':')) ? keywords3.Contains(s1) : keywords3.Contains(s)) {
-					sc.ChangeState(SCE_BAAN_WORD3);
+					if (sc.ch == '(')
+						sc.ChangeState(SCE_BAAN_WORD3);
+					else
+						sc.ChangeState(SCE_BAAN_IDENTIFIER);
 				}
 				else if ((keywords4.kwHasSection && (sc.ch == ':')) ? keywords4.Contains(s1) : keywords4.Contains(s)) {
 					sc.ChangeState(SCE_BAAN_WORD4);
@@ -688,7 +694,7 @@ void SCI_METHOD LexerBaan::Lex(Sci_PositionU startPos, Sci_Position length, int 
 					word[wordlen++] = sc.ch;
 					word[wordlen++] = '\0';
 				}
-				if (!wordInArray(word, preProcessorTags, 11))
+				if (!wordInArray(word, preProcessorTags, 13))
 					// Colorise only preprocessor built in Baan.
 					sc.ChangeState(SCE_BAAN_IDENTIFIER);
 				if (strcmp(word, "#pragma") == 0 || strcmp(word, "#include") == 0) {
@@ -800,9 +806,10 @@ void SCI_METHOD LexerBaan::Fold(Sci_PositionU startPos, Sci_Position length, int
 			else if (style == SCE_BAAN_PREPROCESSOR) {
 				// folds #ifdef/#if/#ifndef - they are not part of the IsPreProcLine folding.
 				if (ch == '#') {
-					if (styler.Match(i, "#ifdef") || styler.Match(i, "#if") || styler.Match(i, "#ifndef"))
+					if (styler.Match(i, "#ifdef") || styler.Match(i, "#if") || styler.Match(i, "#ifndef")
+						|| styler.Match(i, "#context_on"))
 						levelCurrent++;
-					else if (styler.Match(i, "#endif"))
+					else if (styler.Match(i, "#endif") || styler.Match(i, "#context_off"))
 						levelCurrent--;
 				}
 			}
@@ -930,7 +937,7 @@ void SCI_METHOD LexerBaan::Fold(Sci_PositionU startPos, Sci_Position length, int
 					levelCurrent++;
 			}
 			else if (nextLineStyle != 0 && currLineStyle != nextLineStyle
-				&& (priorSectionIsSubSection(lineCurrent -1 ,styler) 
+				&& (priorSectionIsSubSection(lineCurrent -1 ,styler)
 					|| !nextSectionIsSubSection(lineCurrent + 1, styler))) {
 				for (Sci_Position j = styler.LineStart(lineCurrent + 1); j < styler.LineStart(lineCurrent + 1 + 1) - 1; j++) {
 					if (IsASpaceOrTab(styler[j]))

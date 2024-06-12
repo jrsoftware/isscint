@@ -10,13 +10,9 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = ScintillaEditBase
 TEMPLATE = lib
 CONFIG += lib_bundle
-CONFIG += c++14
+CONFIG += c++1z
 
-VERSION = 4.0.0
-
-win32 {
-        QMAKE_CXXFLAGS += -std:c++latest
-}
+VERSION = 4.3.0
 
 SOURCES += \
     PlatQt.cpp \
@@ -24,6 +20,7 @@ SOURCES += \
     ScintillaEditBase.cpp \
     ../../src/XPM.cxx \
     ../../src/ViewStyle.cxx \
+    ../../src/UniqueString.cxx \
     ../../src/UniConversion.cxx \
     ../../src/Style.cxx \
     ../../src/Selection.cxx \
@@ -71,7 +68,6 @@ HEADERS  += \
     ../../src/XPM.h \
     ../../src/ViewStyle.h \
     ../../src/UniConversion.h \
-    ../../src/UnicodeFromUTF8.h \
     ../../src/Style.h \
     ../../src/SplitVector.h \
     ../../src/Selection.h \

@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include <string_view>
+#include <vector>
 #include <algorithm>
 #include <memory>
 #include <iostream>
@@ -12,10 +14,12 @@
 
 #include "catch.hpp"
 
+using namespace Scintilla;
+
 // Test CharClassify.
 
 class CharClassifyTest {
-	// Avoid warnings, deleted so never called. 
+	// Avoid warnings, deleted so never called.
 	CharClassifyTest(const CharClassifyTest &) = delete;
 protected:
 	CharClassifyTest() {
