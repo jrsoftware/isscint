@@ -6,8 +6,10 @@ compilesettings.bat
 *.lib
 *.obj
 *.iobj
+__pycache__
 *.pyc
 *.dll
+*.so
 *.dylib
 *.framework
 *.pyd
@@ -20,6 +22,9 @@ compilesettings.bat
 *.bak
 *.sbr
 *.suo
+*.aps
+*.sln
+*.vcxproj.*
 *.idb
 *.bsc
 *.intermediate.manifest
