@@ -7,7 +7,7 @@
 # Builds for GTK+ 2 and 3. GTK 3 requires GTK3=1 on command line.
 # Also works with ming32-make on Windows.
 
-.PHONY: all clean analyze depend
+.PHONY: static shared all clean analyze depend
 
 .SUFFIXES: .cxx .c .o .h .a .list
 
@@ -49,16 +49,26 @@ ifndef windir
 BASE_FLAGS += -fPIC
 endif
 
+LDFLAGS += -dynamiclib
+LDFLAGS += -shared
+
 # Take care of changing Unix style '/' directory separator to '\' on Windows
 normalize = $(if $(windir),$(subst /,\,$1),$1)
+
+PYTHON = $(if $(windir),pyw,python3)
+
+SHAREDEXTENSION = $(if $(windir),dll,so)
 
 ifdef windir
 CC = gcc
 DEL = del /q
+LEXILLA = lexilla.dll
 else
 DEL = rm -f
+LEXILLA = liblexilla.so
 endif
 COMPLIB=$(basedir)/bin/scintilla.a
+COMPONENT=$(basedir)/bin/libscintilla.$(SHAREDEXTENSION)
 
 vpath %.h $(srcdir) $(basedir)/src $(basedir)/include $(basedir)/lexlib
 vpath %.c $(srcdir)
@@ -79,12 +89,20 @@ CXX_BASE_FLAGS =--std=c++17 $(BASE_FLAGS)
 CXX_ALL_FLAGS =$(DEFINES) $(INCLUDES) $(CXX_BASE_FLAGS) $(CONFIG_FLAGS)
 
 CONFIG_FLAGS:=$(shell pkg-config --cflags $(GTK_VERSION))
+CONFIGLIB:=$(shell pkg-config --libs $(GTK_VERSION) gmodule-no-export-2.0)
 MARSHALLER=scintilla-marshal.o
 
-all: $(COMPLIB)
+all: $(COMPLIB) $(COMPONENT) $(LEXILLA)
+
+static: $(COMPLIB)
+
+shared: $(COMPONENT)
+
+$(LEXILLA):
+	$(MAKE) --directory=../lexilla/src
 
 clean:
-	$(DEL) *.o $(call normalize,$(COMPLIB)) *.plist
+	$(DEL) *.o $(call normalize,$(COMPLIB)) $(call normalize,$(COMPONENT)) *.plist
 
 %.o: %.cxx
 	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -c $<
@@ -103,7 +121,7 @@ analyze:
 	clang --analyze $(DEFINES) $(INCLUDES) $(CONFIG_FLAGS) $(CXX_BASE_FLAGS) $(CXXFLAGS) $(srcdir)/*.cxx $(basedir)/src/*.cxx $(basedir)/lexlib/*.cxx $(basedir)/lexers/*.cxx
 
 depend deps.mak:
-	python DepGen.py
+	$(PYTHON) DepGen.py
 
 LEX_OBJS:=$(addsuffix .o,$(basename $(sort $(notdir $(wildcard $(basedir)/lexers/Lex*.cxx)))))
 
@@ -152,15 +170,27 @@ LEXLIB_OBJS = \
 	StyleContext.o \
 	WordList.o
 
+LEXLIBL_OBJS = $(LEXLIB_OBJS) CatalogueL.o
+LEXLIBS_OBJS = $(LEXLIB_OBJS) Catalogue.o
+
 GTK_OBJS = \
 	ScintillaBase.o \
 	PlatGTK.o \
 	ScintillaGTK.o \
 	ScintillaGTKAccessible.o
 
-$(COMPLIB): $(SRC_OBJS) $(LEXLIB_OBJS) $(GTK_OBJS) $(MARSHALLER) $(LEX_OBJS)
+$(COMPLIB): $(SRC_OBJS) $(LEXLIBL_OBJS) $(GTK_OBJS) $(MARSHALLER) $(LEX_OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 	$(RANLIB) $@
+
+$(COMPONENT): $(SRC_OBJS) $(LEXLIBS_OBJS) $(GTK_OBJS) $(MARSHALLER)
+	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(CONFIGLIB)
+
+Catalogue.o: Catalogue.cxx
+	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -D SCI_LEXER -D SCI_EMPTYCATALOGUE -c $< -o $@
+
+CatalogueL.o: Catalogue.cxx
+	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -D SCI_LEXER -c $< -o $@
 
 # Automatically generate header dependencies with "make deps"
 include deps.mak
