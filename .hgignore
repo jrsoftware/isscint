@@ -1,6 +1,7 @@
 syntax: glob
 *.o
 *.a
+*.asm
 *.lib
 *.obj
 *.iobj
@@ -9,6 +10,7 @@ syntax: glob
 *.dylib
 *.framework
 *.pyd
+*.exe
 *.exp
 *.lib
 *.pdb
@@ -60,3 +62,9 @@ ScintillaEditBase.intermediate.manifest
 ScintillaEdit.intermediate.manifest
 qt/*/Makefile
 cov-int
+.vs
+meson-private
+meson-logs
+build.ninja
+.ninja*
+compile_commands.json

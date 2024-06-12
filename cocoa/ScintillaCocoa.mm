@@ -1,7 +1,7 @@
 
 /**
  * Scintilla source code edit control
- * ScintillaCocoa.mm - Cocoa subclass of ScintillaBase
+ * @file ScintillaCocoa.mm - Cocoa subclass of ScintillaBase
  *
  * Written by Mike Lischke <mlischke@sun.com>
  *
@@ -13,6 +13,11 @@
  * Copyright (c) 2009, 2010 Sun Microsystems, Inc. All rights reserved.
  * This file is dual licensed under LGPL v2.1 and the Scintilla license (http://www.scintilla.org/License.txt).
  */
+
+#include <cmath>
+
+#include <string_view>
+#include <vector>
 
 #import <Cocoa/Cocoa.h>
 #if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
@@ -144,7 +149,7 @@ static const KeyToCommand macMapDefault[] = {
 @interface FindHighlightLayer : CAGradientLayer {
 @private
 	NSString *sFind;
-	int positionFind;
+	long positionFind;
 	BOOL retaining;
 	CGFloat widthText;
 	CGFloat heightLine;
@@ -153,7 +158,7 @@ static const KeyToCommand macMapDefault[] = {
 }
 
 @property(copy) NSString *sFind;
-@property(assign) int positionFind;
+@property(assign) long positionFind;
 @property(assign) BOOL retaining;
 @property(assign) CGFloat widthText;
 @property(assign) CGFloat heightLine;
@@ -313,7 +318,7 @@ const CGFloat paddingHighlightY = 2;
 		// main thread). We need that later for idle event processing.
 		NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 		notificationQueue = [[NSNotificationQueue alloc] initWithNotificationCenter: center];
-		[center addObserver: self selector: @selector(idleTriggered:) name: @"Idle" object: nil];
+		[center addObserver: self selector: @selector(idleTriggered:) name: @"Idle" object: self];
 	}
 	return self;
 }
@@ -418,7 +423,6 @@ ScintillaCocoa::~ScintillaCocoa() {
  * Core initialization of the control. Everything that needs to be set up happens here.
  */
 void ScintillaCocoa::Init() {
-	Scintilla_LinkLexers();
 
 	// Tell Scintilla not to buffer: Quartz buffers drawing for us.
 	WndProc(SCI_SETBUFFEREDDRAW, 0, 0);
@@ -555,6 +559,10 @@ public:
 			return 1;
 		} else {
 			CFStringRef cfsVal = CFStringFromString(mixed, lenMixed, encoding);
+			if (!cfsVal) {
+				folded[0] = '\0';
+				return 1;
+			}
 
 			NSString *sMapped = [(__bridge NSString *)cfsVal stringByFoldingWithOptions: NSCaseInsensitiveSearch
 											     locale: [NSLocale currentLocale]];
@@ -631,6 +639,9 @@ std::string ScintillaCocoa::CaseMapString(const std::string &s, int caseMapping)
 				    vs.styles[STYLE_DEFAULT].characterSet);
 
 	CFStringRef cfsVal = CFStringFromString(s.c_str(), s.length(), encoding);
+	if (!cfsVal) {
+		return s;
+	}
 
 	NSString *sMapped;
 	switch (caseMapping) {
@@ -800,6 +811,21 @@ sptr_t scintilla_send_message(void *sci, unsigned int iMessage, uptr_t wParam, s
 
 //--------------------------------------------------------------------------------------------------
 
+namespace {
+
+/**
+ * The animated find indicator fails with a "bogus layer size" message on macOS 10.13
+ * and causes drawing failures on macOS 10.12.
+ */
+
+bool SupportAnimatedFind() {
+	return std::floor(NSAppKitVersionNumber) < NSAppKitVersionNumber10_12;
+}
+
+}
+
+//--------------------------------------------------------------------------------------------------
+
 /**
  * That's our fake window procedure. On Windows each window has a dedicated procedure to handle
  * commands (also used to synchronize UI and background threads), which is not the case in Cocoa.
@@ -817,12 +843,19 @@ sptr_t ScintillaCocoa::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lPar
 		case SCI_GETDIRECTPOINTER:
 			return reinterpret_cast<sptr_t>(this);
 
+		case SCI_SETBIDIRECTIONAL:
+			bidirectional = static_cast<EditModel::Bidirectional>(wParam);
+			// Invalidate all cached information including layout.
+			DropGraphics(true);
+			InvalidateStyleRedraw();
+			return 0;
+
 		case SCI_TARGETASUTF8:
-			return TargetAsUTF8(reinterpret_cast<char *>(lParam));
+			return TargetAsUTF8(CharPtrFromSPtr(lParam));
 
 		case SCI_ENCODEDFROMUTF8:
-			return EncodedFromUTF8(reinterpret_cast<char *>(wParam),
-					       reinterpret_cast<char *>(lParam));
+			return EncodedFromUTF8(ConstCharPtrFromUPtr(wParam),
+					       CharPtrFromSPtr(lParam));
 
 		case SCI_SETIMEINTERACTION:
 			// Only inline IME supported on Cocoa
@@ -838,11 +871,15 @@ sptr_t ScintillaCocoa::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lPar
 			break;
 
 		case SCI_FINDINDICATORSHOW:
-			ShowFindIndicatorForRange(NSMakeRange(wParam, lParam-wParam), YES);
+			if (SupportAnimatedFind()) {
+				ShowFindIndicatorForRange(NSMakeRange(wParam, lParam-wParam), YES);
+			}
 			return 0;
 
 		case SCI_FINDINDICATORFLASH:
-			ShowFindIndicatorForRange(NSMakeRange(wParam, lParam-wParam), NO);
+			if (SupportAnimatedFind()) {
+				ShowFindIndicatorForRange(NSMakeRange(wParam, lParam-wParam), NO);
+			}
 			return 0;
 
 		case SCI_FINDINDICATORHIDE:
@@ -868,7 +905,7 @@ sptr_t ScintillaCocoa::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lPar
 	} catch (...) {
 		errorStatus = SC_STATUS_FAILURE;
 	}
-	return 0l;
+	return 0;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1005,7 +1042,7 @@ void ScintillaCocoa::Paste(bool forceRectangular) {
 
 	pdoc->BeginUndoAction();
 	ClearSelection(false);
-	InsertPasteShape(selectedText.Data(), static_cast<int>(selectedText.Length()),
+	InsertPasteShape(selectedText.Data(), selectedText.Length(),
 			 selectedText.rectangular ? pasteRectangular : pasteStream);
 	pdoc->EndUndoAction();
 
@@ -1095,7 +1132,7 @@ void ScintillaCocoa::CreateCallTipWindow(PRectangle rc) {
 	if (!ct.wCallTip.Created()) {
 		NSRect ctRect = NSMakeRect(rc.top, rc.bottom, rc.Width(), rc.Height());
 		NSWindow *callTip = [[NSWindow alloc] initWithContentRect: ctRect
-								styleMask: NSBorderlessWindowMask
+								styleMask: NSWindowStyleMaskBorderless
 								  backing: NSBackingStoreBuffered
 								    defer: NO];
 		[callTip setLevel: NSFloatingWindowLevel];
@@ -1169,8 +1206,8 @@ void ScintillaCocoa::DragScroll() {
 
 	// TODO: does not work for wrapped lines, fix it.
 	Sci::Line line = static_cast<Sci::Line>(pdoc->LineFromPosition(posDrag.Position()));
-	Sci::Line currentVisibleLine = cs.DisplayFromDoc(line);
-	Sci::Line lastVisibleLine = std::min(topLine + LinesOnScreen(), cs.LinesDisplayed()) - 2;
+	Sci::Line currentVisibleLine = pcs->DisplayFromDoc(line);
+	Sci::Line lastVisibleLine = std::min(topLine + LinesOnScreen(), pcs->LinesDisplayed()) - 2;
 
 	if (currentVisibleLine <= topLine && topLine > 0)
 		ScrollTo(topLine - scrollSpeed);
@@ -1227,6 +1264,8 @@ void ScintillaCocoa::DragScroll() {
 				    selectedText.characterSet);
 
 	CFStringRef cfsVal = CFStringFromString(selectedText.Data(), selectedText.Length(), encoding);
+	if (!cfsVal)
+		return;
 
 	if ([type compare: NSPasteboardTypeString] == NSOrderedSame) {
 		[pasteboard setString: (__bridge NSString *)cfsVal forType: NSStringPboardType];
@@ -1268,7 +1307,9 @@ void ScintillaCocoa::StartDrag() {
 	Sci::Line startLine = static_cast<Sci::Line>(pdoc->LineFromPosition(selStart));
 	Sci::Line endLine = static_cast<Sci::Line>(pdoc->LineFromPosition(selEnd));
 	Point pt;
-	long startPos, endPos, ep;
+	Sci::Position startPos;
+	Sci::Position endPos;
+	Sci::Position ep;
 	PRectangle rcSel;
 
 	if (startLine==endLine && WndProc(SCI_GETWRAPMODE, 0, 0) != SC_WRAP_NONE) {
@@ -1283,8 +1324,8 @@ void ScintillaCocoa::StartDrag() {
 		// step back a position if we're counting the newline
 		ep =       WndProc(SCI_GETLINEENDPOSITION,      startLine, 0);
 		if (endPos > ep) endPos = ep;
-		ptStart = LocationFromPosition(static_cast<int>(startPos));
-		ptEnd =   LocationFromPosition(static_cast<int>(endPos));
+		ptStart = LocationFromPosition(startPos);
+		ptEnd =   LocationFromPosition(endPos);
 		if (ptStart.y == ptEnd.y) {
 			// We're just selecting part of one visible line
 			rcSel.left = ptStart.x;
@@ -1292,7 +1333,7 @@ void ScintillaCocoa::StartDrag() {
 		} else {
 			// Find the bounding box.
 			startPos = WndProc(SCI_POSITIONFROMLINE, startLine, 0);
-			rcSel.left = LocationFromPosition(static_cast<int>(startPos)).x;
+			rcSel.left = LocationFromPosition(startPos).x;
 			rcSel.right = client.right;
 		}
 		rcSel.top = ptStart.y;
@@ -1302,17 +1343,17 @@ void ScintillaCocoa::StartDrag() {
 		}
 	} else {
 		rcSel.top = rcSel.bottom = rcSel.right = rcSel.left = -1;
-		for (int l = startLine; l <= endLine; l++) {
+		for (Sci::Line l = startLine; l <= endLine; l++) {
 			startPos = WndProc(SCI_GETLINESELSTARTPOSITION, l, 0);
 			endPos = WndProc(SCI_GETLINESELENDPOSITION, l, 0);
 			if (endPos == startPos) continue;
 			// step back a position if we're counting the newline
 			ep = WndProc(SCI_GETLINEENDPOSITION, l, 0);
 			if (endPos > ep) endPos = ep;
-			pt = LocationFromPosition(static_cast<int>(startPos)); // top left of line selection
+			pt = LocationFromPosition(startPos); // top left of line selection
 			if (pt.x < rcSel.left || rcSel.left < 0) rcSel.left = pt.x;
 			if (pt.y < rcSel.top || rcSel.top < 0) rcSel.top = pt.y;
-			pt = LocationFromPosition(static_cast<int>(endPos)); // top right of line selection
+			pt = LocationFromPosition(endPos); // top right of line selection
 			pt.y += vs.lineHeight; // get to the bottom of the line
 			if (pt.x > rcSel.right || rcSel.right < 0) {
 				if (pt.x > client.right)
@@ -1367,7 +1408,7 @@ void ScintillaCocoa::StartDrag() {
 	//           the full rectangle which may include non-selected text.
 
 	NSBitmapImageRep *bitmap = NULL;
-	CGImageRef imagePixmap = pixmap.GetImage();
+	CGImageRef imagePixmap = pixmap.CreateImage();
 	if (imagePixmap)
 		bitmap = [[NSBitmapImageRep alloc] initWithCGImage: imagePixmap];
 	CGImageRelease(imagePixmap);
@@ -1378,7 +1419,7 @@ void ScintillaCocoa::StartDrag() {
 	NSImage *dragImage = [[NSImage alloc] initWithSize: selectionRectangle.size];
 	dragImage.backgroundColor = [NSColor clearColor];
 	[dragImage lockFocus];
-	[image drawAtPoint: NSZeroPoint fromRect: NSZeroRect operation: NSCompositeSourceOver fraction: 0.5];
+	[image drawAtPoint: NSZeroPoint fromRect: NSZeroRect operation: NSCompositingOperationSourceOver fraction: 0.5];
 	[dragImage unlockFocus];
 
 	NSPoint startPoint;
@@ -1494,6 +1535,8 @@ void ScintillaCocoa::SetPasteboardData(NSPasteboard *board, const SelectionText 
 				    selectedText.characterSet);
 
 	CFStringRef cfsVal = CFStringFromString(selectedText.Data(), selectedText.Length(), encoding);
+	if (!cfsVal)
+		return;
 
 	NSArray *pbTypes = selectedText.rectangular ?
 			   @[NSStringPboardType, ScintillaRecPboardType] :
@@ -1553,24 +1596,27 @@ bool ScintillaCocoa::GetPasteboardData(NSPasteboard *board, SelectionText *selec
 
 // Returns the target converted to UTF8.
 // Return the length in bytes.
-int ScintillaCocoa::TargetAsUTF8(char *text) {
-	const int targetLength = targetEnd - targetStart;
+Sci::Position ScintillaCocoa::TargetAsUTF8(char *text) const {
+	const Sci::Position targetLength = targetRange.Length();
 	if (IsUnicodeMode()) {
 		if (text)
-			pdoc->GetCharRange(text, targetStart, targetLength);
+			pdoc->GetCharRange(text, targetRange.start.Position(), targetLength);
 	} else {
 		// Need to convert
 		const CFStringEncoding encoding = EncodingFromCharacterSet(IsUnicodeMode(),
 						  vs.styles[STYLE_DEFAULT].characterSet);
-		const std::string s = RangeText(targetStart, targetEnd);
+		const std::string s = RangeText(targetRange.start.Position(), targetRange.end.Position());
 		CFStringRef cfsVal = CFStringFromString(s.c_str(), s.length(), encoding);
+		if (!cfsVal) {
+			return 0;
+		}
 
 		const std::string tmputf = EncodedBytesString(cfsVal, kCFStringEncodingUTF8);
 
 		if (text)
 			memcpy(text, tmputf.c_str(), tmputf.length());
 		CFRelease(cfsVal);
-		return static_cast<int>(tmputf.length());
+		return tmputf.length();
 	}
 	return targetLength;
 }
@@ -1579,8 +1625,8 @@ int ScintillaCocoa::TargetAsUTF8(char *text) {
 
 // Returns the text in the range converted to an NSString.
 NSString *ScintillaCocoa::RangeTextAsString(NSRange rangePositions) const {
-	const std::string text = RangeText(static_cast<int>(rangePositions.location),
-					   static_cast<int>(NSMaxRange(rangePositions)));
+	const std::string text = RangeText(rangePositions.location,
+					   NSMaxRange(rangePositions));
 	if (IsUnicodeMode()) {
 		return @(text.c_str());
 	} else {
@@ -1597,7 +1643,7 @@ NSString *ScintillaCocoa::RangeTextAsString(NSRange rangePositions) const {
 
 // Return character range of a line.
 NSRange ScintillaCocoa::RangeForVisibleLine(NSInteger lineVisible) {
-	const Range posRangeLine = RangeDisplayLine(static_cast<int>(lineVisible));
+	const Range posRangeLine = RangeDisplayLine(static_cast<Sci::Line>(lineVisible));
 	return CharactersFromPositions(NSMakeRange(posRangeLine.First(),
 				       posRangeLine.Last() - posRangeLine.First()));
 }
@@ -1607,7 +1653,7 @@ NSRange ScintillaCocoa::RangeForVisibleLine(NSInteger lineVisible) {
 // Returns visible line number of a text position in characters.
 NSInteger ScintillaCocoa::VisibleLineForIndex(NSInteger index) {
 	const NSRange rangePosition = PositionsFromCharacters(NSMakeRange(index, 0));
-	const int lineVisible = DisplayFromPosition(static_cast<int>(rangePosition.location));
+	const Sci::Line lineVisible = DisplayFromPosition(rangePosition.location);
 	return lineVisible;
 }
 
@@ -1619,11 +1665,11 @@ NSRect ScintillaCocoa::FrameForRange(NSRange rangeCharacters) {
 
 	NSUInteger rangeEnd = NSMaxRange(posRange);
 	const bool endsWithLineEnd = rangeCharacters.length &&
-				     (pdoc->GetColumn(static_cast<int>(rangeEnd)) == 0);
+				     (pdoc->GetColumn(rangeEnd) == 0);
 
-	Point ptStart = LocationFromPosition(static_cast<int>(posRange.location));
+	Point ptStart = LocationFromPosition(posRange.location);
 	const PointEnd peEndRange = static_cast<PointEnd>(peSubLineEnd|peLineEnd);
-	Point ptEnd = LocationFromPosition(static_cast<int>(rangeEnd), peEndRange);
+	Point ptEnd = LocationFromPosition(rangeEnd, peEndRange);
 
 	NSRect rect = NSMakeRect(ptStart.x, ptStart.y,
 				 ptEnd.x - ptStart.x,
@@ -1654,8 +1700,8 @@ NSRect ScintillaCocoa::GetBounds() const {
 
 // Translates a UTF8 string into the document encoding.
 // Return the length of the result in bytes.
-int ScintillaCocoa::EncodedFromUTF8(char *utf8, char *encoded) const {
-	const int inputLength = (lengthForEncode >= 0) ? lengthForEncode : static_cast<int>(strlen(utf8));
+Sci::Position ScintillaCocoa::EncodedFromUTF8(const char *utf8, char *encoded) const {
+	const size_t inputLength = (lengthForEncode >= 0) ? lengthForEncode : strlen(utf8);
 	if (IsUnicodeMode()) {
 		if (encoded)
 			memcpy(encoded, utf8, inputLength);
@@ -1670,7 +1716,7 @@ int ScintillaCocoa::EncodedFromUTF8(char *utf8, char *encoded) const {
 		if (encoded)
 			memcpy(encoded, sEncoded.c_str(), sEncoded.length());
 		CFRelease(cfsVal);
-		return static_cast<int>(sEncoded.length());
+		return sEncoded.length();
 	}
 }
 
@@ -1751,14 +1797,14 @@ void ScintillaCocoa::PaintMargin(NSRect aRect) {
 void ScintillaCocoa::WillDraw(NSRect rect) {
 	RefreshStyleData();
 	PRectangle rcWillDraw = NSRectToPRectangle(rect);
-	const int posAfterArea = PositionAfterArea(rcWillDraw);
-	const int posAfterMax = PositionAfterMaxStyling(posAfterArea, true);
+	const Sci::Position posAfterArea = PositionAfterArea(rcWillDraw);
+	const Sci::Position posAfterMax = PositionAfterMaxStyling(posAfterArea, true);
 	pdoc->StyleToAdjustingLineDuration(posAfterMax);
 	StartIdleStyling(posAfterMax < posAfterArea);
 	NotifyUpdateUI();
 	if (WrapLines(WrapScope::wsVisible)) {
 		// Wrap may have reduced number of lines so more lines may need to be styled
-		const int posAfterAreaWrapped = PositionAfterArea(rcWillDraw);
+		const Sci::Position posAfterAreaWrapped = PositionAfterArea(rcWillDraw);
 		pdoc->EnsureStyledTo(posAfterAreaWrapped);
 		// The wrapping process has changed the height of some lines so redraw all.
 		Redraw();
@@ -1834,7 +1880,7 @@ bool ScintillaCocoa::SetScrollingSize(void) {
 		NSScrollView *scrollView = ScrollContainer();
 		NSClipView *clipView = ScrollContainer().contentView;
 		NSRect clipRect = clipView.bounds;
-		CGFloat docHeight = cs.LinesDisplayed() * vs.lineHeight;
+		CGFloat docHeight = pcs->LinesDisplayed() * vs.lineHeight;
 		if (!endAtLastLine)
 			docHeight += (int(scrollView.bounds.size.height / vs.lineHeight)-3) * vs.lineHeight;
 		// Allow extra space so that last scroll position places whole line at top
@@ -1924,7 +1970,7 @@ void ScintillaCocoa::NotifyChange() {
 //--------------------------------------------------------------------------------------------------
 
 void ScintillaCocoa::NotifyFocus(bool focus) {
-	if (notifyProc != NULL)
+	if (commandEvents && notifyProc)
 		notifyProc(notifyObj, WM_COMMAND, Platform::LongFromTwoShorts(static_cast<short>(GetCtrlID()),
 				(focus ? SCEN_SETFOCUS : SCEN_KILLFOCUS)),
 			   (uintptr_t) this);
@@ -2049,17 +2095,17 @@ static inline UniChar KeyTranslate(UniChar unicodeChar, NSEventModifierFlags mod
 	case 27:
 		return SCK_ESCAPE;
 	case '+':
-		if (modifierFlags & NSNumericPadKeyMask)
+		if (modifierFlags & NSEventModifierFlagNumericPad)
 			return SCK_ADD;
 		else
 			return unicodeChar;
 	case '-':
-		if (modifierFlags & NSNumericPadKeyMask)
+		if (modifierFlags & NSEventModifierFlagNumericPad)
 			return SCK_SUBTRACT;
 		else
 			return unicodeChar;
 	case '/':
-		if (modifierFlags & NSNumericPadKeyMask)
+		if (modifierFlags & NSEventModifierFlagNumericPad)
 			return SCK_DIVIDE;
 		else
 			return unicodeChar;
@@ -2084,10 +2130,10 @@ static inline UniChar KeyTranslate(UniChar unicodeChar, NSEventModifierFlags mod
 static int TranslateModifierFlags(NSUInteger modifiers) {
 	// Signal Control as SCI_META
 	return
-		(((modifiers & NSShiftKeyMask) != 0) ? SCI_SHIFT : 0) |
-		(((modifiers & NSCommandKeyMask) != 0) ? SCI_CTRL : 0) |
-		(((modifiers & NSAlternateKeyMask) != 0) ? SCI_ALT : 0) |
-		(((modifiers & NSControlKeyMask) != 0) ? SCI_META : 0);
+		(((modifiers & NSEventModifierFlagShift) != 0) ? SCI_SHIFT : 0) |
+		(((modifiers & NSEventModifierFlagCommand) != 0) ? SCI_CTRL : 0) |
+		(((modifiers & NSEventModifierFlagOption) != 0) ? SCI_ALT : 0) |
+		(((modifiers & NSEventModifierFlagControl) != 0) ? SCI_META : 0);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2128,15 +2174,39 @@ bool ScintillaCocoa::KeyboardInput(NSEvent *event) {
 /**
  * Used to insert already processed text provided by the Cocoa text input system.
  */
-int ScintillaCocoa::InsertText(NSString *input) {
-	CFStringEncoding encoding = EncodingFromCharacterSet(IsUnicodeMode(),
-				    vs.styles[STYLE_DEFAULT].characterSet);
-	std::string encoded = EncodedBytesString((__bridge CFStringRef)input, encoding);
-
-	if (encoded.length() > 0) {
-		AddCharUTF(encoded.c_str(), static_cast<unsigned int>(encoded.length()), false);
+ptrdiff_t ScintillaCocoa::InsertText(NSString *input, CharacterSource charSource) {
+	if ([input length] == 0) {
+		return 0;
 	}
-	return static_cast<int>(encoded.length());
+
+	// There may be multiple characters in input so loop over them
+	if (IsUnicodeMode()) {
+		// There may be non-BMP characters as 2 elements in NSString so
+		// convert to UTF-8 and use UTF8BytesOfLead.
+		std::string encoded = EncodedBytesString((__bridge CFStringRef)input,
+							 kCFStringEncodingUTF8);
+		std::string_view sv = encoded;
+		while (sv.length()) {
+			const unsigned char leadByte = sv[0];
+			const unsigned int bytesInCharacter = UTF8BytesOfLead[leadByte];
+			InsertCharacter(sv.substr(0, bytesInCharacter), charSource);
+			sv.remove_prefix(bytesInCharacter);
+		}
+		return encoded.length();
+	} else {
+		const CFStringEncoding encoding = EncodingFromCharacterSet(IsUnicodeMode(),
+									   vs.styles[STYLE_DEFAULT].characterSet);
+		ptrdiff_t lengthInserted = 0;
+		for (NSInteger i = 0; i < [input length]; i++) {
+			NSString *character = [input substringWithRange:NSMakeRange(i, 1)];
+			std::string encoded = EncodedBytesString((__bridge CFStringRef)character,
+								 encoding);
+			lengthInserted += encoded.length();
+			InsertCharacter(encoded, charSource);
+		}
+
+		return lengthInserted;
+	}
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2145,10 +2215,10 @@ int ScintillaCocoa::InsertText(NSString *input) {
  * Convert from a range of characters to a range of bytes.
  */
 NSRange ScintillaCocoa::PositionsFromCharacters(NSRange rangeCharacters) const {
-	long start = pdoc->GetRelativePositionUTF16(0, static_cast<int>(rangeCharacters.location));
+	Sci::Position start = pdoc->GetRelativePositionUTF16(0, rangeCharacters.location);
 	if (start == INVALID_POSITION)
 		start = pdoc->Length();
-	long end = pdoc->GetRelativePositionUTF16(static_cast<int>(start), static_cast<int>(rangeCharacters.length));
+	Sci::Position end = pdoc->GetRelativePositionUTF16(start, rangeCharacters.length);
 	if (end == INVALID_POSITION)
 		end = pdoc->Length();
 	return NSMakeRange(start, end - start);
@@ -2160,9 +2230,9 @@ NSRange ScintillaCocoa::PositionsFromCharacters(NSRange rangeCharacters) const {
  * Convert from a range of characters from a range of bytes.
  */
 NSRange ScintillaCocoa::CharactersFromPositions(NSRange rangePositions) const {
-	const long start = pdoc->CountUTF16(0, static_cast<int>(rangePositions.location));
-	const long len = pdoc->CountUTF16(static_cast<int>(rangePositions.location),
-					  static_cast<int>(NSMaxRange(rangePositions)));
+	const Sci::Position start = pdoc->CountUTF16(0, rangePositions.location);
+	const Sci::Position len = pdoc->CountUTF16(rangePositions.location,
+					  NSMaxRange(rangePositions));
 	return NSMakeRange(start, len);
 }
 
@@ -2216,7 +2286,7 @@ void ScintillaCocoa::CompositionStart() {
  */
 void ScintillaCocoa::CompositionCommit() {
 	pdoc->TentativeCommit();
-	pdoc->DecorationSetCurrentIndicator(INDIC_IME);
+	pdoc->DecorationSetCurrentIndicator(INDICATOR_IME);
 	pdoc->DecorationFillRange(0, 0, pdoc->Length());
 }
 
@@ -2246,6 +2316,20 @@ void ScintillaCocoa::SetDocPointer(Document *document) {
 //--------------------------------------------------------------------------------------------------
 
 /**
+ * Convert NSEvent timestamp NSTimeInterval into unsigned int milliseconds wanted by Editor methods.
+ */
+
+namespace {
+
+unsigned int TimeOfEvent(NSEvent *event) {
+	return static_cast<unsigned int>(event.timestamp * 1000);
+}
+
+}
+
+//--------------------------------------------------------------------------------------------------
+
+/**
  * Called by the owning view when the mouse pointer enters the control.
  */
 void ScintillaCocoa::MouseEntered(NSEvent *event) {
@@ -2255,7 +2339,7 @@ void ScintillaCocoa::MouseEntered(NSEvent *event) {
 		// Mouse location is given in screen coordinates and might also be outside of our bounds.
 		Point location = ConvertPoint(event.locationInWindow);
 		ButtonMoveWithModifiers(location,
-					(int)(event.timestamp * 1000),
+					TimeOfEvent(event),
 					TranslateModifierFlags(event.modifierFlags));
 	}
 }
@@ -2271,14 +2355,14 @@ void ScintillaCocoa::MouseExited(NSEvent * /* event */) {
 void ScintillaCocoa::MouseDown(NSEvent *event) {
 	Point location = ConvertPoint(event.locationInWindow);
 	ButtonDownWithModifiers(location,
-				(int)(event.timestamp * 1000),
+				TimeOfEvent(event),
 				TranslateModifierFlags(event.modifierFlags));
 }
 
 void ScintillaCocoa::RightMouseDown(NSEvent *event) {
 	Point location = ConvertPoint(event.locationInWindow);
 	RightButtonDownWithModifiers(location,
-				     (int)(event.timestamp * 1000),
+				     TimeOfEvent(event),
 				     TranslateModifierFlags(event.modifierFlags));
 }
 
@@ -2288,7 +2372,7 @@ void ScintillaCocoa::MouseMove(NSEvent *event) {
 	lastMouseEvent = event;
 
 	ButtonMoveWithModifiers(ConvertPoint(event.locationInWindow),
-				(int)(event.timestamp * 1000),
+				TimeOfEvent(event),
 				TranslateModifierFlags(event.modifierFlags));
 }
 
@@ -2296,22 +2380,22 @@ void ScintillaCocoa::MouseMove(NSEvent *event) {
 
 void ScintillaCocoa::MouseUp(NSEvent *event) {
 	ButtonUpWithModifiers(ConvertPoint(event.locationInWindow),
-		 (int)(event.timestamp * 1000),
+		 TimeOfEvent(event),
 		 TranslateModifierFlags(event.modifierFlags));
 }
 
 //--------------------------------------------------------------------------------------------------
 
 void ScintillaCocoa::MouseWheel(NSEvent *event) {
-	bool command = (event.modifierFlags & NSCommandKeyMask) != 0;
+	bool command = (event.modifierFlags & NSEventModifierFlagCommand) != 0;
 	int dY = 0;
 
 	// In order to make scrolling with larger offset smoother we scroll less lines the larger the
 	// delta value is.
 	if (event.deltaY < 0)
-		dY = -(int) sqrt(-10.0 * event.deltaY);
+		dY = -static_cast<int>(sqrt(-10.0 * event.deltaY));
 	else
-		dY = (int) sqrt(10.0 * event.deltaY);
+		dY = static_cast<int>(sqrt(10.0 * event.deltaY));
 
 	if (command) {
 		// Zoom! We play with the font sizes in the styles.
@@ -2416,7 +2500,7 @@ void ScintillaCocoa::ShowFindIndicatorForRange(NSRange charRange, BOOL retaining
 		layerFindIndicator = [[FindHighlightLayer alloc] init];
 		[content setWantsLayer: YES];
 		layerFindIndicator.geometryFlipped = content.layer.geometryFlipped;
-		if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_8) {
+		if (std::floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_8) {
 			// Content layer is unflipped on 10.9, but the indicator shows wrong unless flipped
 			layerFindIndicator.geometryFlipped = YES;
 		}
@@ -2428,14 +2512,14 @@ void ScintillaCocoa::ShowFindIndicatorForRange(NSRange charRange, BOOL retaining
 		CFStringEncoding encoding = EncodingFromCharacterSet(IsUnicodeMode(),
 					    vs.styles[STYLE_DEFAULT].characterSet);
 		std::vector<char> buffer(charRange.length);
-		pdoc->GetCharRange(&buffer[0], static_cast<int>(charRange.location), static_cast<int>(charRange.length));
+		pdoc->GetCharRange(&buffer[0], charRange.location, charRange.length);
 
 		CFStringRef cfsFind = CFStringFromString(&buffer[0], charRange.length, encoding);
 		layerFindIndicator.sFind = (__bridge NSString *)cfsFind;
 		if (cfsFind)
 			CFRelease(cfsFind);
 		layerFindIndicator.retaining = retaining;
-		layerFindIndicator.positionFind = static_cast<int>(charRange.location);
+		layerFindIndicator.positionFind = charRange.location;
 		// SCI_GETSTYLEAT reports a signed byte but want an unsigned to index into styles
 		const char styleByte = static_cast<char>(WndProc(SCI_GETSTYLEAT, charRange.location, 0));
 		const long style = static_cast<unsigned char>(styleByte);

@@ -1,8 +1,10 @@
 // Unit Tests for Scintilla internal data structures
 
+#include <cstddef>
 #include <cstring>
 
 #include <stdexcept>
+#include <string_view>
 #include <vector>
 #include <algorithm>
 #include <memory>
@@ -15,6 +17,8 @@
 
 #include "catch.hpp"
 
+using namespace Scintilla;
+
 const int growSize = 4;
 
 const int lengthTestArray = 8;
@@ -24,7 +28,7 @@ static const int testArray[lengthTestArray] = {3, 4, 5, 6, 7, 8, 9, 10};
 
 TEST_CASE("SplitVectorWithRangeAdd") {
 
-	SplitVectorWithRangeAdd svwra(growSize);
+	SplitVectorWithRangeAdd<int> svwra(growSize);
 
 	SECTION("IsEmptyInitially") {
 		REQUIRE(0 == svwra.Length());
@@ -47,7 +51,7 @@ TEST_CASE("SplitVectorWithRangeAdd") {
 
 TEST_CASE("Partitioning") {
 
-	Partitioning part(growSize);
+	Partitioning<Sci::Position> part(growSize);
 
 	SECTION("IsEmptyInitially") {
 		REQUIRE(1 == part.Partitions());

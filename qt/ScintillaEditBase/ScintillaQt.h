@@ -21,6 +21,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -28,7 +29,9 @@
 
 #include "Scintilla.h"
 #include "Platform.h"
+#include "ILoader.h"
 #include "ILexer.h"
+#include "CharacterCategory.h"
 #include "Position.h"
 #include "UniqueString.h"
 #include "SplitVector.h"
@@ -39,7 +42,6 @@
 #include "CallTip.h"
 #include "KeyMap.h"
 #include "Indicator.h"
-#include "XPM.h"
 #include "LineMarker.h"
 #include "Style.h"
 #include "AutoComplete.h"
@@ -57,20 +59,15 @@
 #include "ScintillaBase.h"
 #include "CaseConvert.h"
 
-#ifdef SCI_LEXER
-#include "SciLexer.h"
-#include "PropSetSimple.h"
-#endif
-
 #include <QObject>
 #include <QAbstractScrollArea>
 #include <QAction>
 #include <QClipboard>
 #include <QPaintEvent>
 
-#ifdef SCI_NAMESPACE
+class ScintillaEditBase;
+
 namespace Scintilla {
-#endif
 
 class ScintillaQt : public QObject, public ScintillaBase {
 	Q_OBJECT
@@ -106,7 +103,7 @@ private:
 	bool ValidCodePage(int codePage) const override;
 
 private:
-	void ScrollText(int linesToMove) override;
+	void ScrollText(Sci::Line linesToMove) override;
 	void SetVerticalScrollPos() override;
 	void SetHorizontalScrollPos() override;
 	bool ModifyScrollBars(Sci::Line nMax, Sci::Line nPage) override;
@@ -124,7 +121,9 @@ private:
 	int timers[tickDwell+1];
 	bool FineTickerRunning(TickReason reason) override;
 	void FineTickerStart(TickReason reason, int millis, int tolerance) override;
+	void CancelTimers();
 	void FineTickerCancel(TickReason reason) override;
+	bool ChangeIdle(bool on);
 	bool SetIdle(bool on) override;
 	void SetMouseCapture(bool on) override;
 	bool HaveMouseCapture() override;
@@ -166,11 +165,9 @@ private:
 	bool dragWasDropped;
 	int rectangularSelectionModifier;
 
-	friend class ScintillaEditBase;
+	friend class ::ScintillaEditBase;
 };
 
-#ifdef SCI_NAMESPACE
 }
-#endif
 
 #endif // SCINTILLAQT_H

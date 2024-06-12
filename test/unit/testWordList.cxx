@@ -6,6 +6,8 @@
 
 #include "catch.hpp"
 
+using namespace Scintilla;
+
 // Test WordList.
 
 TEST_CASE("WordList") {
@@ -22,6 +24,21 @@ TEST_CASE("WordList") {
 		REQUIRE(2 == wl.Length());
 		REQUIRE(wl.InList("struct"));
 		REQUIRE(!wl.InList("class"));
+	}
+
+	SECTION("Set") {
+		// Check whether Set returns whether it has changed correctly
+		const bool changed = wl.Set("else struct");
+		REQUIRE(changed);
+		// Changing to same thing
+		const bool changed2 = wl.Set("else struct");
+		REQUIRE(!changed2);
+		// Changed order shouldn't be seen as a change
+		const bool changed3 = wl.Set("struct else");
+		REQUIRE(!changed3);
+		// Removing word is a change
+		const bool changed4 = wl.Set("struct");
+		REQUIRE(changed4);
 	}
 
 	SECTION("WordAt") {
@@ -54,7 +71,7 @@ TEST_CASE("WordList") {
 		REQUIRE(wl.InListAbridged("w..active", '~'));
 		REQUIRE(!wl.InListAbridged("w.active", '~'));
 		REQUIRE(!wl.InListAbridged("w.x.closed", '~'));
-		
+
 		REQUIRE(wl.InListAbridged("book", '~'));
 		REQUIRE(wl.InListAbridged("bok", '~'));
 		REQUIRE(!wl.InListAbridged("bk", '~'));

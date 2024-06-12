@@ -15,7 +15,6 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include <cctype>
 #include <cstdio>
 #include <ctime>
 
@@ -25,13 +24,10 @@
 #include <map>
 #include <memory>
 
+#include "ILoader.h"
 #include "ILexer.h"
 
-#ifdef SCI_LEXER
-#include "SciLexer.h"
-#include "PropSetSimple.h"
-#endif
-
+#include "CharacterCategory.h"
 #include "Position.h"
 #include "UniqueString.h"
 #include "SplitVector.h"
@@ -42,7 +38,6 @@
 #include "CallTip.h"
 #include "KeyMap.h"
 #include "Indicator.h"
-#include "XPM.h"
 #include "LineMarker.h"
 #include "Style.h"
 #include "ViewStyle.h"
@@ -106,8 +101,8 @@ private:
 
 	bool GetPasteboardData(NSPasteboard *board, SelectionText *selectedText);
 	void SetPasteboardData(NSPasteboard *board, const SelectionText &selectedText);
-	int TargetAsUTF8(char *text);
-	int EncodedFromUTF8(char *utf8, char *encoded) const;
+	Sci::Position TargetAsUTF8(char *text) const;
+	Sci::Position EncodedFromUTF8(const char *utf8, char *encoded) const;
 
 	int scrollSpeed;
 	int scrollTicks;
@@ -197,7 +192,7 @@ public:
 	void ObserverRemove();
 	void IdleWork() override;
 	void QueueIdleWork(WorkNeeded::workItems items, Sci::Position upTo) override;
-	int InsertText(NSString *input);
+	ptrdiff_t InsertText(NSString *input, CharacterSource charSource);
 	NSRange PositionsFromCharacters(NSRange rangeCharacters) const;
 	NSRange CharactersFromPositions(NSRange rangePositions) const;
 	NSString *RangeTextAsString(NSRange rangePositions) const;

@@ -8,12 +8,10 @@
 #ifndef LEXERBASE_H
 #define LEXERBASE_H
 
-#ifdef SCI_NAMESPACE
 namespace Scintilla {
-#endif
 
 // A simple lexer with no state
-class LexerBase : public ILexer4 {
+class LexerBase : public ILexer5 {
 protected:
 	const LexicalClass *lexClasses;
 	size_t nClasses;
@@ -48,10 +46,12 @@ public:
 	const char * SCI_METHOD NameOfStyle(int style) override;
 	const char * SCI_METHOD TagsOfStyle(int style) override;
 	const char * SCI_METHOD DescriptionOfStyle(int style) override;
+	// ILexer5 methods
+	const char * SCI_METHOD GetName() override;
+	int SCI_METHOD GetIdentifier() override;
+	const char *SCI_METHOD PropertyGet(const char *key) override;
 };
 
-#ifdef SCI_NAMESPACE
 }
-#endif
 
 #endif

@@ -23,9 +23,7 @@
 #include "LexerModule.h"
 #include "DefaultLexer.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 
 static const char *const DMISWordListDesc[] = {
@@ -58,7 +56,7 @@ class LexerDMIS : public DefaultLexer
 		virtual ~LexerDMIS(void);
 
 		int SCI_METHOD Version() const override {
-			return lvRelease4;
+			return lvRelease5;
 		}
 
 		void SCI_METHOD Release() override {
@@ -81,13 +79,17 @@ class LexerDMIS : public DefaultLexer
 			return -1;
 		}
 
+		const char * SCI_METHOD PropertyGet(const char *) override {
+			return NULL;
+		}
+
 		Sci_Position SCI_METHOD WordListSet(int n, const char *wl) override;
 
 		void * SCI_METHOD PrivateCall(int, void *) override {
 			return NULL;
 		}
 
-		static ILexer4 *LexerFactoryDMIS() {
+		static ILexer5 *LexerFactoryDMIS() {
 			return new LexerDMIS;
 		}
 
@@ -131,7 +133,7 @@ void SCI_METHOD LexerDMIS::InitWordListSets(void)
 }
 
 
-LexerDMIS::LexerDMIS(void) {
+LexerDMIS::LexerDMIS(void) : DefaultLexer("DMIS", SCLEX_DMIS) {
 	this->InitWordListSets();
 
 	this->m_majorWords.Clear();

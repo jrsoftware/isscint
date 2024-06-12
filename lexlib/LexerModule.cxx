@@ -22,9 +22,7 @@
 #include "LexerBase.h"
 #include "LexerSimple.h"
 
-#ifdef SCI_NAMESPACE
 using namespace Scintilla;
-#endif
 
 LexerModule::LexerModule(int language_,
 	LexerFunction fnLexer_,
@@ -36,7 +34,7 @@ LexerModule::LexerModule(int language_,
 	language(language_),
 	fnLexer(fnLexer_),
 	fnFolder(fnFolder_),
-	fnFactory(0),
+	fnFactory(nullptr),
 	wordListDescriptions(wordListDescriptions_),
 	lexClasses(lexClasses_),
 	nClasses(nClasses_),
@@ -48,8 +46,8 @@ LexerModule::LexerModule(int language_,
 	const char *languageName_,
 	const char * const wordListDescriptions_[]) :
 	language(language_),
-	fnLexer(0),
-	fnFolder(0),
+	fnLexer(nullptr),
+	fnFolder(nullptr),
 	fnFactory(fnFactory_),
 	wordListDescriptions(wordListDescriptions_),
 	lexClasses(nullptr),
@@ -57,8 +55,15 @@ LexerModule::LexerModule(int language_,
 	languageName(languageName_) {
 }
 
+LexerModule::~LexerModule() {
+}
+
+int LexerModule::GetLanguage() const { 
+	return language;
+}
+
 int LexerModule::GetNumWordLists() const {
-	if (wordListDescriptions == NULL) {
+	if (!wordListDescriptions) {
 		return -1;
 	} else {
 		int numWordLists = 0;
@@ -88,7 +93,7 @@ size_t LexerModule::NamedStyles() const {
 	return nClasses;
 }
 
-ILexer4 *LexerModule::Create() const {
+ILexer5 *LexerModule::Create() const {
 	if (fnFactory)
 		return fnFactory();
 	else
@@ -108,7 +113,7 @@ void LexerModule::Fold(Sci_PositionU startPos, Sci_Position lengthDoc, int initS
 		// Move back one line in case deletion wrecked current line fold state
 		if (lineCurrent > 0) {
 			lineCurrent--;
-			Sci_Position newStartPos = styler.LineStart(lineCurrent);
+			const Sci_Position newStartPos = styler.LineStart(lineCurrent);
 			lengthDoc += startPos - newStartPos;
 			startPos = newStartPos;
 			initStyle = 0;
