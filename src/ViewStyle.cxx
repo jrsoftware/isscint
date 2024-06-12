@@ -131,6 +131,8 @@ ViewStyle::ViewStyle(const ViewStyle &source) : markers(MARKER_MAX + 1), indicat
 	marginStyleOffset = source.marginStyleOffset;
 	annotationVisible = source.annotationVisible;
 	annotationStyleOffset = source.annotationStyleOffset;
+	eolAnnotationVisible = source.eolAnnotationVisible;
+	eolAnnotationStyleOffset = source.eolAnnotationStyleOffset;
 	braceHighlightIndicatorSet = source.braceHighlightIndicatorSet;
 	braceHighlightIndicator = source.braceHighlightIndicator;
 	braceBadLightIndicatorSet = source.braceBadLightIndicatorSet;
@@ -156,7 +158,7 @@ ViewStyle::~ViewStyle() {
 	fonts.clear();
 }
 
-void ViewStyle::CalculateMarginWidthAndMask() {
+void ViewStyle::CalculateMarginWidthAndMask() noexcept {
 	fixedColumnWidth = marginInside ? leftMarginWidth : 0;
 	maskInLine = 0xffffffff;
 	int maskDefinedMarkers = 0;
@@ -264,6 +266,8 @@ void ViewStyle::Init(size_t stylesSize_) {
 	marginStyleOffset = 0;
 	annotationVisible = ANNOTATION_HIDDEN;
 	annotationStyleOffset = 0;
+	eolAnnotationVisible = EOLANNOTATION_HIDDEN;
+	eolAnnotationStyleOffset = 0;
 	braceHighlightIndicatorSet = false;
 	braceHighlightIndicator = 0;
 	braceBadLightIndicatorSet = false;
@@ -276,7 +280,7 @@ void ViewStyle::Init(size_t stylesSize_) {
 	ctrlCharPadding = 3; // +3 For a blank on front and rounded edge each side
 	lastSegItalicsOffset = 2;
 
-	wrapState = eWrapNone;
+	wrapState = WrapMode::none;
 	wrapVisualFlags = 0;
 	wrapVisualFlagsLocation = 0;
 	wrapVisualStartIndent = 0;
@@ -403,7 +407,7 @@ int ViewStyle::ExternalMarginWidth() const noexcept {
 	return marginInside ? 0 : fixedColumnWidth;
 }
 
-int ViewStyle::MarginFromLocation(Point pt) const {
+int ViewStyle::MarginFromLocation(Point pt) const noexcept {
 	int margin = -1;
 	int x = marginInside ? 0 : -fixedColumnWidth;
 	for (size_t i = 0; i < ms.size(); i++) {
@@ -418,7 +422,7 @@ bool ViewStyle::ValidStyle(size_t styleIndex) const noexcept {
 	return styleIndex < styles.size();
 }
 
-void ViewStyle::CalcLargestMarkerHeight() {
+void ViewStyle::CalcLargestMarkerHeight() noexcept {
 	largestMarkerHeight = 0;
 	for (const LineMarker &marker : markers) {
 		switch (marker.markType) {
@@ -449,7 +453,7 @@ bool ViewStyle::IsLineFrameOpaque(bool caretActive, bool lineContainsCaret) cons
 // display itself (as long as it's not an SC_MARK_EMPTY marker).  These are checked in order
 // with the earlier taking precedence.  When multiple markers cause background override,
 // the colour for the highest numbered one is used.
-ColourOptional ViewStyle::Background(int marksOfLine, bool caretActive, bool lineContainsCaret) const {
+ColourOptional ViewStyle::Background(int marksOfLine, bool caretActive, bool lineContainsCaret) const noexcept {
 	ColourOptional background;
 	if (!caretLineFrame && (caretActive || alwaysShowCaretLineBackground) && showCaretLineBackground &&
 		(caretLineAlpha == SC_ALPHA_NOALPHA) && lineContainsCaret) {
@@ -496,27 +500,38 @@ bool ViewStyle::WhiteSpaceVisible(bool inIndent) const noexcept {
 		viewWhitespace == wsVisibleAlways;
 }
 
-ColourDesired ViewStyle::WrapColour() const {
+ColourDesired ViewStyle::WrapColour() const noexcept {
 	if (whitespaceColours.fore.isSet)
 		return whitespaceColours.fore;
 	else
 		return styles[STYLE_DEFAULT].fore;
 }
 
+// Insert new edge in sorted order.
+void ViewStyle::AddMultiEdge(uptr_t wParam, sptr_t lParam) {
+	const int column = static_cast<int>(wParam);
+	theMultiEdge.insert(
+		std::upper_bound(theMultiEdge.begin(), theMultiEdge.end(), column,
+			[](const EdgeProperties &a, const EdgeProperties &b) {
+				return a.column < b.column;
+			}),
+		EdgeProperties(column, lParam));
+}
+
 bool ViewStyle::SetWrapState(int wrapState_) noexcept {
 	WrapMode wrapStateWanted;
 	switch (wrapState_) {
 	case SC_WRAP_WORD:
-		wrapStateWanted = eWrapWord;
+		wrapStateWanted = WrapMode::word;
 		break;
 	case SC_WRAP_CHAR:
-		wrapStateWanted = eWrapChar;
+		wrapStateWanted = WrapMode::character;
 		break;
 	case SC_WRAP_WHITESPACE:
-		wrapStateWanted = eWrapWhitespace;
+		wrapStateWanted = WrapMode::whitespace;
 		break;
 	default:
-		wrapStateWanted = eWrapNone;
+		wrapStateWanted = WrapMode::none;
 		break;
 	}
 	const bool changed = wrapState != wrapStateWanted;
