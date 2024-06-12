@@ -132,6 +132,9 @@ bool ScintillaEditBase::event(QEvent *event)
 		// Circumvent the tab focus convention.
 		keyPressEvent(static_cast<QKeyEvent *>(event));
 		result = event->isAccepted();
+	} else if (event->type() == QEvent::Show) {
+		setMouseTracking(true);
+		result = QAbstractScrollArea::event(event);
 	} else if (event->type() == QEvent::Hide) {
 		setMouseTracking(false);
 		result = QAbstractScrollArea::event(event);
@@ -178,7 +181,6 @@ void ScintillaEditBase::wheelEvent(QWheelEvent *event)
 void ScintillaEditBase::focusInEvent(QFocusEvent *event)
 {
 	sqt->SetFocusState(true);
-	emit updateUi();
 
 	QAbstractScrollArea::focusInEvent(event);
 }
@@ -238,7 +240,9 @@ void ScintillaEditBase::keyPressEvent(QKeyEvent *event)
 	bool alt   = QApplication::keyboardModifiers() & Qt::AltModifier;
 
 	bool consumed = false;
-	bool added = sqt->KeyDown(key, shift, ctrl, alt, &consumed) != 0;
+	bool added = sqt->KeyDownWithModifiers(key,
+					       ScintillaQt::ModifierFlags(shift, ctrl, alt),
+					       &consumed) != 0;
 	if (!consumed)
 		consumed = added;
 
@@ -311,24 +315,19 @@ void ScintillaEditBase::mousePressEvent(QMouseEvent *event)
 		bool alt   = QApplication::keyboardModifiers() & Qt::AltModifier;
 #endif
 
-		sqt->ButtonDown(pos, time.elapsed(), shift, ctrl, alt);
+		sqt->ButtonDownWithModifiers(pos, time.elapsed(), ScintillaQt::ModifierFlags(shift, ctrl, alt));
 	}
 
 	if (event->button() == Qt::RightButton) {
-		bool shift = QApplication::keyboardModifiers() & Qt::ShiftModifier;
-		bool ctrl  = QApplication::keyboardModifiers() & Qt::ControlModifier;
-		bool alt   = QApplication::keyboardModifiers() & Qt::AltModifier;
-
-		sqt->RightButtonDownWithModifiers(pos, time.elapsed(), ScintillaQt::ModifierFlags(shift, ctrl, alt));
+		sqt->RightButtonDownWithModifiers(pos, time.elapsed(), ModifiersOfKeyboard());
 	}
 }
 
 void ScintillaEditBase::mouseReleaseEvent(QMouseEvent *event)
 {
 	Point point = PointFromQPoint(event->pos());
-	bool ctrl  = QApplication::keyboardModifiers() & Qt::ControlModifier;
 	if (event->button() == Qt::LeftButton)
-		sqt->ButtonUp(point, time.elapsed(), ctrl);
+		sqt->ButtonUpWithModifiers(point, time.elapsed(), ModifiersOfKeyboard());
 
 	int pos = send(SCI_POSITIONFROMPOINT, point.x, point.y);
 	int line = send(SCI_LINEFROMPOSITION, pos);
@@ -358,9 +357,9 @@ void ScintillaEditBase::mouseMoveEvent(QMouseEvent *event)
 	bool alt   = QApplication::keyboardModifiers() & Qt::AltModifier;
 #endif
 
-	int modifiers = (shift ? SCI_SHIFT : 0) | (ctrl ? SCI_CTRL : 0) | (alt ? SCI_ALT : 0);
+	const int modifiers = ScintillaQt::ModifierFlags(shift, ctrl, alt);
 
-	sqt->ButtonMoveWithModifiers(pos, modifiers);
+	sqt->ButtonMoveWithModifiers(pos, time.elapsed(), modifiers);
 }
 
 void ScintillaEditBase::contextMenuEvent(QContextMenuEvent *event)
@@ -377,7 +376,9 @@ void ScintillaEditBase::contextMenuEvent(QContextMenuEvent *event)
 
 void ScintillaEditBase::dragEnterEvent(QDragEnterEvent *event)
 {
-	if (event->mimeData()->hasText()) {
+	if (event->mimeData()->hasUrls()) {
+		event->acceptProposedAction();
+	} else if (event->mimeData()->hasText()) {
 		event->acceptProposedAction();
 
 		Point point = PointFromQPoint(event->pos());
@@ -394,7 +395,9 @@ void ScintillaEditBase::dragLeaveEvent(QDragLeaveEvent * /* event */)
 
 void ScintillaEditBase::dragMoveEvent(QDragMoveEvent *event)
 {
-	if (event->mimeData()->hasText()) {
+	if (event->mimeData()->hasUrls()) {
+		event->acceptProposedAction();
+	} else if (event->mimeData()->hasText()) {
 		event->acceptProposedAction();
 
 		Point point = PointFromQPoint(event->pos());
@@ -406,7 +409,10 @@ void ScintillaEditBase::dragMoveEvent(QDragMoveEvent *event)
 
 void ScintillaEditBase::dropEvent(QDropEvent *event)
 {
-	if (event->mimeData()->hasText()) {
+	if (event->mimeData()->hasUrls()) {
+		event->acceptProposedAction();
+		sqt->DropUrls(event->mimeData());
+	} else if (event->mimeData()->hasText()) {
 		event->acceptProposedAction();
 
 		Point point = PointFromQPoint(event->pos());
@@ -701,7 +707,7 @@ void ScintillaEditBase::notifyParent(SCNotification scn)
 			break;
 
 		case SCN_UPDATEUI:
-			emit updateUi();
+			emit updateUi(scn.updated);
 			break;
 
 		case SCN_MODIFIED:
@@ -747,7 +753,7 @@ void ScintillaEditBase::notifyParent(SCNotification scn)
 			break;
 
 		case SCN_URIDROPPED:
-			emit uriDropped();
+			emit uriDropped(QString::fromUtf8(scn.text));
 			break;
 
 		case SCN_DWELLSTART:
@@ -782,6 +788,14 @@ void ScintillaEditBase::notifyParent(SCNotification scn)
 			emit autoCompleteCancelled();
 			break;
 
+		case SCN_FOCUSIN:
+			emit focusChanged(true);
+			break;
+
+		case SCN_FOCUSOUT:
+			emit focusChanged(false);
+			break;
+
 		default:
 			return;
 	}
@@ -790,4 +804,13 @@ void ScintillaEditBase::notifyParent(SCNotification scn)
 void ScintillaEditBase::event_command(uptr_t wParam, sptr_t lParam)
 {
 	emit command(wParam, lParam);
+}
+
+int ScintillaEditBase::ModifiersOfKeyboard() const
+{
+	const bool shift = QApplication::keyboardModifiers() & Qt::ShiftModifier;
+	const bool ctrl  = QApplication::keyboardModifiers() & Qt::ControlModifier;
+	const bool alt   = QApplication::keyboardModifiers() & Qt::AltModifier;
+
+	return ScintillaQt::ModifierFlags(shift, ctrl, alt);
 }

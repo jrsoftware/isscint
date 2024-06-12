@@ -85,13 +85,8 @@
 
 #include "Converter.h"
 
-#if GTK_CHECK_VERSION(2,20,0)
 #define IS_WIDGET_REALIZED(w) (gtk_widget_get_realized(GTK_WIDGET(w)))
 #define IS_WIDGET_MAPPED(w) (gtk_widget_get_mapped(GTK_WIDGET(w)))
-#else
-#define IS_WIDGET_REALIZED(w) (GTK_WIDGET_REALIZED(w))
-#define IS_WIDGET_MAPPED(w) (GTK_WIDGET_MAPPED(w))
-#endif
 
 #define SC_INDICATOR_INPUT INDIC_IME
 #define SC_INDICATOR_TARGET INDIC_IME+1
@@ -182,11 +177,7 @@ ScintillaGTK::ScintillaGTK(_ScintillaObject *sci_) :
 	sci = sci_;
 	wMain = GTK_WIDGET(sci);
 
-#if PLAT_GTK_WIN32
 	rectangularSelectionModifier = SCMOD_ALT;
-#else
-	rectangularSelectionModifier = SCMOD_CTRL;
-#endif
 
 #if PLAT_GTK_WIN32
 	// There does not seem to be a real standard for indicating that the clipboard
@@ -231,11 +222,7 @@ static void UnRefCursor(GdkCursor *cursor) {
 
 void ScintillaGTK::RealizeThis(GtkWidget *widget) {
 	//Platform::DebugPrintf("ScintillaGTK::realize this\n");
-#if GTK_CHECK_VERSION(2,20,0)
 	gtk_widget_set_realized(widget, TRUE);
-#else
-	GTK_WIDGET_SET_FLAGS(widget, GTK_REALIZED);
-#endif
 	GdkWindowAttr attrs;
 	attrs.window_type = GDK_WINDOW_CHILD;
 	GtkAllocation allocation;
@@ -306,7 +293,9 @@ void ScintillaGTK::RealizeThis(GtkWidget *widget) {
 	gdk_window_set_cursor(PWindow(scrollbarh), cursor);
 	UnRefCursor(cursor);
 
-	gtk_selection_add_targets(widget, GDK_SELECTION_PRIMARY,
+	g_signal_connect(PWidget(wSelection), "selection_get", G_CALLBACK(PrimarySelection), (gpointer) this);
+	g_signal_connect(PWidget(wSelection), "selection_clear_event", G_CALLBACK(PrimaryClear), (gpointer) this);
+	gtk_selection_add_targets(PWidget(wSelection), GDK_SELECTION_PRIMARY,
 	                          clipboardCopyTargets, nClipboardCopyTargets);
 }
 
@@ -317,16 +306,12 @@ void ScintillaGTK::Realize(GtkWidget *widget) {
 
 void ScintillaGTK::UnRealizeThis(GtkWidget *widget) {
 	try {
-		gtk_selection_clear_targets(widget, GDK_SELECTION_PRIMARY);
+		gtk_selection_clear_targets(PWidget(wSelection), GDK_SELECTION_PRIMARY);
 
 		if (IS_WIDGET_MAPPED(widget)) {
 			gtk_widget_unmap(widget);
 		}
-#if GTK_CHECK_VERSION(2,20,0)
 		gtk_widget_set_realized(widget, FALSE);
-#else
-		GTK_WIDGET_UNSET_FLAGS(widget, GTK_REALIZED);
-#endif
 		gtk_widget_unrealize(PWidget(wText));
 		if (PWidget(scrollbarv))
 			gtk_widget_unrealize(PWidget(scrollbarv));
@@ -361,11 +346,7 @@ static void MapWidget(GtkWidget *widget) {
 void ScintillaGTK::MapThis() {
 	try {
 		//Platform::DebugPrintf("ScintillaGTK::map this\n");
-#if GTK_CHECK_VERSION(2,20,0)
 		gtk_widget_set_mapped(PWidget(wMain), TRUE);
-#else
-		GTK_WIDGET_SET_FLAGS(PWidget(wMain), GTK_MAPPED);
-#endif
 		MapWidget(PWidget(wText));
 		MapWidget(PWidget(scrollbarh));
 		MapWidget(PWidget(scrollbarv));
@@ -387,11 +368,7 @@ void ScintillaGTK::Map(GtkWidget *widget) {
 void ScintillaGTK::UnMapThis() {
 	try {
 		//Platform::DebugPrintf("ScintillaGTK::unmap this\n");
-#if GTK_CHECK_VERSION(2,20,0)
 		gtk_widget_set_mapped(PWidget(wMain), FALSE);
-#else
-		GTK_WIDGET_UNSET_FLAGS(PWidget(wMain), GTK_MAPPED);
-#endif
 		DropGraphics(false);
 		gdk_window_hide(PWindow(wMain));
 		gtk_widget_unmap(PWidget(wText));
@@ -563,6 +540,8 @@ void ScintillaGTK::Init() {
 	}
 #endif
 
+	wSelection = gtk_invisible_new();
+
 	gtk_widget_set_can_focus(PWidget(wMain), TRUE);
 	gtk_widget_set_sensitive(PWidget(wMain), TRUE);
 	gtk_widget_set_events(PWidget(wMain),
@@ -684,6 +663,8 @@ void ScintillaGTK::Finalise() {
 		g_object_unref(accessible);
 		accessible = 0;
 	}
+
+	wSelection.Destroy();
 
 	ScintillaBase::Finalise();
 }
@@ -903,13 +884,6 @@ sptr_t ScintillaGTK::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 
 sptr_t ScintillaGTK::DefWndProc(unsigned int, uptr_t, sptr_t) {
 	return 0;
-}
-
-/**
-* Report that this Editor subclass has a working implementation of FineTickerStart.
-*/
-bool ScintillaGTK::FineTickerAvailable() {
-	return true;
 }
 
 bool ScintillaGTK::FineTickerRunning(TickReason reason) {
@@ -1364,16 +1338,16 @@ void ScintillaGTK::AddToPopUp(const char *label, int cmd, bool enabled) {
 
 bool ScintillaGTK::OwnPrimarySelection() {
 	return ((gdk_selection_owner_get(GDK_SELECTION_PRIMARY)
-		== PWindow(wMain)) &&
-			(PWindow(wMain) != NULL));
+		== PWindow(wSelection)) &&
+			(PWindow(wSelection) != NULL));
 }
 
 void ScintillaGTK::ClaimSelection() {
 	// X Windows has a 'primary selection' as well as the clipboard.
 	// Whenever the user selects some text, we become the primary selection
-	if (!sel.Empty() && IS_WIDGET_REALIZED(GTK_WIDGET(PWidget(wMain)))) {
+	if (!sel.Empty() && IS_WIDGET_REALIZED(GTK_WIDGET(PWidget(wSelection)))) {
 		primarySelection = true;
-		gtk_selection_owner_set(GTK_WIDGET(PWidget(wMain)),
+		gtk_selection_owner_set(GTK_WIDGET(PWidget(wSelection)),
 		                        GDK_SELECTION_PRIMARY, GDK_CURRENT_TIME);
 		primary.Clear();
 	} else if (OwnPrimarySelection()) {
@@ -1582,6 +1556,27 @@ void ScintillaGTK::UnclaimSelection(GdkEventSelection *selection_event) {
 	}
 }
 
+void ScintillaGTK::PrimarySelection(GtkWidget *, GtkSelectionData *selection_data, guint info, guint, ScintillaGTK *sciThis) {
+	try {
+		if (SelectionOfGSD(selection_data) == GDK_SELECTION_PRIMARY) {
+			if (sciThis->primary.Empty()) {
+				sciThis->CopySelectionRange(&sciThis->primary);
+			}
+			sciThis->GetSelection(selection_data, info, &sciThis->primary);
+		}
+	} catch (...) {
+		sciThis->errorStatus = SC_STATUS_FAILURE;
+	}
+}
+
+gboolean ScintillaGTK::PrimaryClear(GtkWidget *widget, GdkEventSelection *event, ScintillaGTK *sciThis) {					 
+	sciThis->UnclaimSelection(event);
+	if (GTK_WIDGET_CLASS(sciThis->parentClass)->selection_clear_event) {
+		return GTK_WIDGET_CLASS(sciThis->parentClass)->selection_clear_event(widget, event);
+	}
+	return TRUE;
+}
+
 void ScintillaGTK::Resize(int width, int height) {
 	//Platform::DebugPrintf("Resize %d %d\n", width, height);
 	//printf("Resize %d %d\n", width, height);
@@ -1614,7 +1609,7 @@ void ScintillaGTK::Resize(int width, int height) {
 		gtk_widget_show(GTK_WIDGET(PWidget(scrollbarh)));
 		alloc.x = 0;
 		alloc.y = height - horizontalScrollBarHeight;
-		alloc.width = Platform::Maximum(minHScrollBarWidth, width - verticalScrollBarWidth);
+		alloc.width = std::max(minHScrollBarWidth, width - verticalScrollBarWidth);
 		alloc.height = horizontalScrollBarHeight;
 		gtk_widget_size_allocate(GTK_WIDGET(PWidget(scrollbarh)), &alloc);
 	} else {
@@ -1627,7 +1622,7 @@ void ScintillaGTK::Resize(int width, int height) {
 		alloc.x = width - verticalScrollBarWidth;
 		alloc.y = 0;
 		alloc.width = verticalScrollBarWidth;
-		alloc.height = Platform::Maximum(minVScrollBarHeight, height - horizontalScrollBarHeight);
+		alloc.height = std::max(minVScrollBarHeight, height - horizontalScrollBarHeight);
 		gtk_widget_size_allocate(GTK_WIDGET(PWidget(scrollbarv)), &alloc);
 	} else {
 		gtk_widget_hide(GTK_WIDGET(PWidget(scrollbarv)));
@@ -1648,8 +1643,8 @@ void ScintillaGTK::Resize(int width, int height) {
 	alloc.width = requisition.width;
 	alloc.height = requisition.height;
 #endif
-	alloc.width = Platform::Maximum(alloc.width, width - verticalScrollBarWidth);
-	alloc.height = Platform::Maximum(alloc.height, height - horizontalScrollBarHeight);
+	alloc.width = std::max(alloc.width, width - verticalScrollBarWidth);
+	alloc.height = std::max(alloc.height, height - horizontalScrollBarHeight);
 	gtk_widget_size_allocate(GTK_WIDGET(PWidget(wText)), &alloc);
 }
 
@@ -1796,7 +1791,11 @@ gint ScintillaGTK::MouseRelease(GtkWidget *widget, GdkEventButton *event) {
 				// If mouse released on scroll bar then the position is relative to the
 				// scrollbar, not the drawing window so just repeat the most recent point.
 				pt = sciThis->ptMouseLast;
-			sciThis->ButtonUp(pt, event->time, (event->state & GDK_CONTROL_MASK) != 0);
+			const int modifiers = ModifierFlags(
+				(event->state & GDK_SHIFT_MASK) != 0,
+				(event->state & GDK_CONTROL_MASK) != 0,
+				(event->state & modifierTranslated(sciThis->rectangularSelectionModifier)) != 0);
+			sciThis->ButtonUpWithModifiers(pt, event->time, modifiers);
 		}
 	} catch (...) {
 		sciThis->errorStatus = SC_STATUS_FAILURE;
@@ -1933,10 +1932,11 @@ gint ScintillaGTK::Motion(GtkWidget *widget, GdkEventMotion *event) {
 		//Platform::DebugPrintf("Move %x %x %d %c %d %d\n",
 		//	sciThis,event->window,event->time,event->is_hint? 'h' :'.', x, y);
 		Point pt(x, y);
-		int modifiers = ((event->state & GDK_SHIFT_MASK) != 0 ? SCI_SHIFT : 0) |
-		                ((event->state & GDK_CONTROL_MASK) != 0 ? SCI_CTRL : 0) |
-		                ((event->state & modifierTranslated(sciThis->rectangularSelectionModifier)) != 0 ? SCI_ALT : 0);
-		sciThis->ButtonMoveWithModifiers(pt, modifiers);
+		const int modifiers = ModifierFlags(
+				(event->state & GDK_SHIFT_MASK) != 0,
+				(event->state & GDK_CONTROL_MASK) != 0,
+				(event->state & modifierTranslated(sciThis->rectangularSelectionModifier)) != 0);
+		sciThis->ButtonMoveWithModifiers(pt, event->time, modifiers);
 	} catch (...) {
 		sciThis->errorStatus = SC_STATUS_FAILURE;
 	}
@@ -2622,11 +2622,12 @@ gboolean ScintillaGTK::ExposeTextThis(GtkWidget * /*widget*/, GdkEventExpose *os
 		Paint(surfaceWindow.get(), rcPaint);
 		surfaceWindow->Release();
 		cairo_destroy(cr);
-		if (paintState == paintAbandoned) {
+		if ((paintState == paintAbandoned) || repaintFullWindow) {
 			// Painting area was insufficient to cover new styling or brace highlight positions
 			FullPaint();
 		}
 		paintState = notPainting;
+		repaintFullWindow = false;
 
 		if (rgnUpdate) {
 			gdk_region_destroy(rgnUpdate);
@@ -2723,13 +2724,8 @@ gboolean ScintillaGTK::DragMotionThis(GdkDragContext *context,
 	try {
 		Point npt(x, y);
 		SetDragPosition(SPositionFromLocation(npt, false, false, UserVirtualSpace()));
-#if GTK_CHECK_VERSION(2,22,0)
 		GdkDragAction preferredAction = gdk_drag_context_get_suggested_action(context);
 		GdkDragAction actions = gdk_drag_context_get_actions(context);
-#else
-		GdkDragAction preferredAction = context->suggested_action;
-		GdkDragAction actions = context->actions;
-#endif
 		SelectionPosition pos = SPositionFromLocation(npt);
 		if ((inDragDrop == ddDragging) && (PositionInSelection(pos.Position()))) {
 			// Avoid dragging selection onto itself as that produces a move
@@ -2807,11 +2803,7 @@ void ScintillaGTK::DragDataGet(GtkWidget *widget, GdkDragContext *context,
 		if (!sciThis->sel.Empty()) {
 			sciThis->GetSelection(selection_data, info, &sciThis->drag);
 		}
-#if GTK_CHECK_VERSION(2,22,0)
 		GdkDragAction action = gdk_drag_context_get_selected_action(context);
-#else
-		GdkDragAction action = context->action;
-#endif
 		if (action == GDK_ACTION_MOVE) {
 			for (size_t r=0; r<sciThis->sel.Count(); r++) {
 				if (sciThis->posDrop >= sciThis->sel.Range(r).Start()) {
