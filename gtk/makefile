@@ -63,10 +63,8 @@ SHAREDEXTENSION = $(if $(windir),dll,so)
 ifdef windir
 CC = gcc
 DEL = del /q
-LEXILLA = lexilla.dll
 else
 DEL = rm -f
-LEXILLA = liblexilla.so
 endif
 COMPLIB=$(basedir)/bin/scintilla.a
 COMPONENT=$(basedir)/bin/libscintilla.$(SHAREDEXTENSION)
@@ -93,14 +91,11 @@ CONFIG_FLAGS:=$(shell $(PKG_CONFIG) --cflags $(GTK_VERSION))
 CONFIGLIB:=$(shell $(PKG_CONFIG) --libs $(GTK_VERSION) gmodule-no-export-2.0)
 MARSHALLER=scintilla-marshal.o
 
-all: $(COMPLIB) $(COMPONENT) $(LEXILLA)
+all: $(COMPLIB) $(COMPONENT)
 
 static: $(COMPLIB)
 
 shared: $(COMPONENT)
-
-$(LEXILLA):
-	$(MAKE) --directory=../lexilla/src
 
 clean:
 	$(DEL) *.o $(call normalize,$(COMPLIB)) $(call normalize,$(COMPONENT)) *.plist
@@ -119,7 +114,7 @@ GLIB_GENMARSHAL_FLAGS = --prefix=scintilla_marshal
 	$(GLIB_GENMARSHAL) --body $(GLIB_GENMARSHAL_FLAGS) $< > $@
 
 analyze:
-	clang --analyze $(DEFINES) $(INCLUDES) $(CONFIG_FLAGS) $(CXX_BASE_FLAGS) $(CXXFLAGS) $(srcdir)/*.cxx $(basedir)/src/*.cxx $(basedir)/lexlib/*.cxx $(basedir)/lexers/*.cxx
+	clang --analyze $(DEFINES) $(INCLUDES) $(CONFIG_FLAGS) $(CXX_BASE_FLAGS) $(CXXFLAGS) $(srcdir)/*.cxx $(basedir)/src/*.cxx
 
 depend deps.mak:
 	$(PYTHON) DepGen.py
@@ -133,8 +128,8 @@ SRC_OBJS = \
 	CaseConvert.o \
 	CaseFolder.o \
 	CellBuffer.o \
-	CharacterCategory.o \
-	CharacterSet.o \
+	CharacterCategoryMap.o \
+	CharacterType.o \
 	CharClassify.o \
 	ContractionState.o \
 	DBCS.o \
@@ -143,6 +138,7 @@ SRC_OBJS = \
 	EditModel.o \
 	Editor.o \
 	EditView.o \
+	Geometry.o \
 	Indicator.o \
 	KeyMap.o \
 	LineMarker.o \
@@ -158,33 +154,17 @@ SRC_OBJS = \
 	ViewStyle.o \
 	XPM.o
 
-# Required by lexers
-LEXLIB_OBJS = \
-	Accessor.o \
-	Catalogue.o \
-	DefaultLexer.o \
-	ExternalLexer.o \
-	LexerBase.o \
-	LexerModule.o \
-	LexerSimple.o \
-	PropSetSimple.o \
-	StyleContext.o \
-	WordList.o
-
-LEXLIBL_OBJS = $(LEXLIB_OBJS) CatalogueL.o
-LEXLIBS_OBJS = $(LEXLIB_OBJS) Catalogue.o
-
 GTK_OBJS = \
 	ScintillaBase.o \
 	PlatGTK.o \
 	ScintillaGTK.o \
 	ScintillaGTKAccessible.o
 
-$(COMPLIB): $(SRC_OBJS) $(LEXLIBL_OBJS) $(GTK_OBJS) $(MARSHALLER) $(LEX_OBJS)
+$(COMPLIB): $(SRC_OBJS) $(GTK_OBJS) $(MARSHALLER) $(LEX_OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 	$(RANLIB) $@
 
-$(COMPONENT): $(SRC_OBJS) $(LEXLIBS_OBJS) $(GTK_OBJS) $(MARSHALLER)
+$(COMPONENT): $(SRC_OBJS) $(GTK_OBJS) $(MARSHALLER)
 	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(CONFIGLIB)
 
 Catalogue.o: Catalogue.cxx
