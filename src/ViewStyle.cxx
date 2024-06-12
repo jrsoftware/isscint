@@ -66,6 +66,7 @@ void FontRealised::Realise(Surface &surface, int zoomLevel, Technology technolog
   lineHeight = static_cast<unsigned int>(surface.Height(font.get()));
 	capitalHeight = surface.Ascent(font.get()) - surface.InternalLeading(font.get());
 	aveCharWidth = surface.AverageCharWidth(font.get());
+	spaceWidth = surface.WidthText(font.get(), " ");
 }
 
 ViewStyle::ViewStyle() : markers(MarkerMax + 1), indicators(static_cast<size_t>(IndicatorNumbers::Max) + 1) {
@@ -488,7 +489,7 @@ std::optional<ColourRGBA> ViewStyle::Background(int marksOfLine, bool caretActiv
 		int marks = marksOfLine;
 		for (int markBit = 0; (markBit < 32) && marks; markBit++) {
 			if ((marks & 1) && ((markers[markBit].markType == MarkerSymbol::Background) ||
-				(markers[markBit].markType == MarkerSymbol::BackFore))&&
+				(markers[markBit].markType == MarkerSymbol::BackFore)) &&
 				(markers[markBit].layer == Layer::Base)) {
 				background = markers[markBit].back;
 			}
