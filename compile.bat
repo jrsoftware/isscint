@@ -27,11 +27,15 @@ rem -------------------------------------------------------------------------
 cd win32
 if errorlevel 1 goto exit
 
-echo VsDevCmd.bat
+set __VSCMD_ARG_NO_LOGO=1
+set VSCMD_SKIP_SENDTELEMETRY=1
+
+echo - Calling VsDevCmd.bat
 call "%VSTOOLSROOT%\VsDevCmd.bat"
 if errorlevel 1 goto exit
+echo.
 
-echo - Scintilla.dll
+echo - Compiling Scintilla.dll
 if "%1"=="noclean" goto noclean
 nmake -s -f scintilla.mak clean
 if errorlevel 1 goto failed
