@@ -15,11 +15,10 @@ DIR_BIN=../bin
 COMPONENT = $(DIR_BIN)/Scintilla.dll
 LIBSCI = $(DIR_BIN)/libscintilla.a
 
-WARNINGS = -Wpedantic -Wall
+WARNINGS = -Wpedantic -Wall -Wextra
 
 ifdef CLANG
 CXX = clang++
-DEFINES += -D_CRT_SECURE_NO_DEPRECATE
 else
 # MinGW GCC
 LIBSMINGW = -lstdc++
@@ -46,7 +45,7 @@ vpath %.h ../src ../include
 vpath %.cxx ../src
 
 LDFLAGS=-shared -static -mwindows
-LIBS=-lgdi32 -luser32 -limm32 -lole32 -luuid -loleaut32 -lmsimg32 $(LIBSMINGW)
+LIBS=-lgdi32 -luser32 -limm32 -lole32 -luuid -loleaut32 $(LIBSMINGW)
 
 INCLUDES=-I ../include -I ../src
 
@@ -57,7 +56,7 @@ DEFINES += -DNO_CXX11_REGEX
 endif
 
 DEFINES += -D$(if $(DEBUG),DEBUG,NDEBUG)
-BASE_FLAGS += $(if $(DEBUG),-g,-Os)
+BASE_FLAGS += $(if $(DEBUG),-g,-O3)
 
 ifndef DEBUG
 STRIPFLAG=$(STRIPOPTION)
@@ -87,6 +86,7 @@ SRC_OBJS = \
 	$(DIR_O)/CaseConvert.o \
 	$(DIR_O)/CaseFolder.o \
 	$(DIR_O)/CellBuffer.o \
+	$(DIR_O)/ChangeHistory.o \
 	$(DIR_O)/CharacterCategoryMap.o \
 	$(DIR_O)/CharacterType.o \
 	$(DIR_O)/CharClassify.o \

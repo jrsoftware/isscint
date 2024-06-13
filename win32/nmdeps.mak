@@ -97,8 +97,21 @@ $(DIR_O)/CellBuffer.obj: \
 	../src/Position.h \
 	../src/SplitVector.h \
 	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/SparseVector.h \
+	../src/ChangeHistory.h \
 	../src/CellBuffer.h \
 	../src/UniConversion.h
+$(DIR_O)/ChangeHistory.obj: \
+	../src/ChangeHistory.cxx \
+	../include/ScintillaTypes.h \
+	../src/Debugging.h \
+	../src/Position.h \
+	../src/SplitVector.h \
+	../src/Partitioning.h \
+	../src/RunStyles.h \
+	../src/SparseVector.h \
+	../src/ChangeHistory.h
 $(DIR_O)/CharacterCategoryMap.obj: \
 	../src/CharacterCategoryMap.cxx \
 	../src/CharacterCategoryMap.h
@@ -360,6 +373,7 @@ $(DIR_O)/PositionCache.obj: \
 	../src/CaseFolder.h \
 	../src/Document.h \
 	../src/UniConversion.h \
+	../src/DBCS.h \
 	../src/Selection.h \
 	../src/PositionCache.h
 $(DIR_O)/RESearch.obj: \

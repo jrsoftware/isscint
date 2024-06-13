@@ -47,10 +47,6 @@ bool MarginStyle::ShowsFolding() const noexcept {
 	return (mask & MaskFolders) != 0;
 }
 
-FontRealised::FontRealised(bool styleAutoComplete) noexcept {
-	styleAutoCompleteOnly = styleAutoComplete;
-}
-
 void FontRealised::Realise(Surface &surface, int zoomLevel, Technology technology, const FontSpecification &fs, const char *localeName) {
 	PLATFORM_ASSERT(fs.fontName);
 	measurements.sizeZoomed = fs.size + zoomLevel * FontSizeMultiplier;
@@ -109,6 +105,49 @@ ViewStyle::ViewStyle(size_t stylesSize_) :
 	indicators[1] = Indicator(IndicatorStyle::TT, ColourRGBA(0, 0, 0xff));
 	indicators[2] = Indicator(IndicatorStyle::Plain, ColourRGBA(0xff, 0, 0));
 
+	// Reverted to origin
+	constexpr ColourRGBA revertedToOrigin(0x40, 0xA0, 0xBF);
+	// Saved
+	constexpr ColourRGBA saved(0x0, 0xA0, 0x0);
+	// Modified
+	constexpr ColourRGBA modified(0xFF, 0x80, 0x0);
+	// Reverted to change
+	constexpr ColourRGBA revertedToChange(0xA0, 0xC0, 0x0);
+
+	// Edition indicators
+	constexpr size_t indexHistory = static_cast<size_t>(IndicatorNumbers::HistoryRevertedToOriginInsertion);
+
+	indicators[indexHistory+0] = Indicator(IndicatorStyle::CompositionThick, revertedToOrigin, false, 30, 60);
+	indicators[indexHistory+1] = Indicator(IndicatorStyle::Point, revertedToOrigin);
+	indicators[indexHistory+2] = Indicator(IndicatorStyle::CompositionThick, saved, false, 30, 60);
+	indicators[indexHistory+3] = Indicator(IndicatorStyle::Point, saved);
+	indicators[indexHistory+4] = Indicator(IndicatorStyle::CompositionThick, modified, false, 30, 60);
+	indicators[indexHistory+5] = Indicator(IndicatorStyle::PointTop, modified);
+	indicators[indexHistory+6] = Indicator(IndicatorStyle::CompositionThick, revertedToChange, false, 30, 60);
+	indicators[indexHistory+7] = Indicator(IndicatorStyle::Point, revertedToChange);
+
+	// Edition markers
+	// Reverted to origin
+	constexpr size_t indexHistoryRevertedToOrigin = static_cast<size_t>(MarkerOutline::HistoryRevertedToOrigin);
+	markers[indexHistoryRevertedToOrigin].back = revertedToOrigin;
+	markers[indexHistoryRevertedToOrigin].fore = revertedToOrigin;
+	markers[indexHistoryRevertedToOrigin].markType = MarkerSymbol::Bar;
+	// Saved
+	constexpr size_t indexHistorySaved = static_cast<size_t>(MarkerOutline::HistorySaved);
+	markers[indexHistorySaved].back = saved;
+	markers[indexHistorySaved].fore = saved;
+	markers[indexHistorySaved].markType = MarkerSymbol::Bar;
+	// Modified
+	constexpr size_t indexHistoryModified = static_cast<size_t>(MarkerOutline::HistoryModified);
+	markers[indexHistoryModified].back = Platform::Chrome();
+	markers[indexHistoryModified].fore = modified;
+	markers[indexHistoryModified].markType = MarkerSymbol::Bar;
+	// Reverted to change
+	constexpr size_t indexHistoryRevertedToModified = static_cast<size_t>(MarkerOutline::HistoryRevertedToModified);
+	markers[indexHistoryRevertedToModified].back = revertedToChange;
+	markers[indexHistoryRevertedToModified].fore = revertedToChange;
+	markers[indexHistoryRevertedToModified].markType = MarkerSymbol::Bar;
+
 	technology = Technology::Default;
 	indicatorsDynamic = false;
 	indicatorsSetFore = false;
@@ -148,10 +187,10 @@ ViewStyle::ViewStyle(size_t stylesSize_) :
 	controlCharWidth = 0;
 	selbar = Platform::Chrome();
 	selbarlight = Platform::ChromeHighlight();
-	styles[StyleLineNumber].fore = ColourRGBA(0, 0, 0);
+	styles[StyleLineNumber].fore = black;
 	styles[StyleLineNumber].back = Platform::Chrome();
 
-	elementBaseColours[Element::Caret] = ColourRGBA(0, 0, 0);
+	elementBaseColours[Element::Caret] = black;
 	elementBaseColours[Element::CaretAdditional] = ColourRGBA(0x7f, 0x7f, 0x7f);
 	elementAllowsTranslucent.insert({
 		Element::Caret,
@@ -246,6 +285,7 @@ ViewStyle::ViewStyle(const ViewStyle &source) : ViewStyle(source.styles.size()) 
 	ms = source.ms;
 	maskInLine = source.maskInLine;
 	maskDrawInText = source.maskDrawInText;
+	maskDrawWrapped = source.maskDrawWrapped;
 	fixedColumnWidth = source.fixedColumnWidth;
 	marginInside = source.marginInside;
 	textStart = source.textStart;
@@ -309,6 +349,17 @@ void ViewStyle::CalculateMarginWidthAndMask() noexcept {
 			break;
 		}
 	}
+	maskDrawWrapped = 0;
+	for (int markBit = 0; markBit < 32; markBit++) {
+		const int maskBit = 1U << markBit;
+		switch (markers[markBit].markType) {
+		case MarkerSymbol::Bar:
+			maskDrawWrapped |= maskBit;
+			break;
+		default:	// Other marker types do not affect the masks
+			break;
+		}
+	}
 }
 
 void ViewStyle::Refresh(Surface &surface, int tabInChars) {
@@ -323,9 +374,9 @@ void ViewStyle::Refresh(Surface &surface, int tabInChars) {
 	}
 
 	// Create a FontRealised object for each unique font in the styles.
-	CreateAndAddFont(styles[StyleDefault], false);
-	for (unsigned int j=0; j<styles.size(); j++) {
-		CreateAndAddFont(styles[j], j == StyleAutoCompletion);
+	CreateAndAddFont(styles[StyleDefault]);
+	for (const Style &style : styles) {
+		CreateAndAddFont(style);
 	}
 
 	// Ask platform to allocate each unique font.
@@ -409,7 +460,7 @@ void ViewStyle::ClearStyles() {
 	styles[StyleLineNumber].back = Platform::Chrome();
 
 	// Set call tip fore/back to match the values previously set for call tips
-	styles[StyleCallTip].back = ColourRGBA(0xff, 0xff, 0xff);
+	styles[StyleCallTip].back = white;
 	styles[StyleCallTip].fore = ColourRGBA(0x80, 0x80, 0x80);
 }
 
@@ -455,6 +506,9 @@ void ViewStyle::CalcLargestMarkerHeight() noexcept {
 			if (marker.image && marker.image->GetHeight() > largestMarkerHeight)
 				largestMarkerHeight = marker.image->GetHeight();
 			break;
+		case MarkerSymbol::Bar:
+			largestMarkerHeight = lineHeight + 2;
+			break;
 		default:	// Only images have their own natural heights
 			break;
 		}
@@ -477,8 +531,8 @@ bool ViewStyle::IsLineFrameOpaque(bool caretActive, bool lineContainsCaret) cons
 // display itself (as long as it's not an MarkerSymbol::Empty marker).  These are checked in order
 // with the earlier taking precedence.  When multiple markers cause background override,
 // the colour for the highest numbered one is used.
-std::optional<ColourRGBA> ViewStyle::Background(int marksOfLine, bool caretActive, bool lineContainsCaret) const {
-	std::optional<ColourRGBA> background;
+ColourOptional ViewStyle::Background(int marksOfLine, bool caretActive, bool lineContainsCaret) const {
+	ColourOptional background;
 	if (!caretLine.frame && (caretActive || caretLine.alwaysShow) &&
 		(caretLine.layer == Layer::Base) && lineContainsCaret) {
 		background = ElementColour(Element::CaretLineBack);
@@ -549,7 +603,7 @@ void ViewStyle::AddMultiEdge(int column, ColourRGBA colour) {
 		EdgeProperties(column, colour));
 }
 
-std::optional<ColourRGBA> ViewStyle::ElementColour(Element element) const {
+ColourOptional ViewStyle::ElementColour(Element element) const {
 	ElementMap::const_iterator search = elementColours.find(element);
 	if (search != elementColours.end()) {
 		if (search->second.has_value()) {
@@ -563,6 +617,14 @@ std::optional<ColourRGBA> ViewStyle::ElementColour(Element element) const {
 		}
 	}
 	return {};
+}
+
+ColourRGBA ViewStyle::ElementColourForced(Element element) const {
+	// Like ElementColour but never returns empty - when not found return opaque black.
+	// This method avoids warnings for unwrapping potentially empty optionals from
+	// Visual C++ Code Analysis
+	const ColourOptional colour = ElementColour(element);
+	return colour.value_or(black);
 }
 
 bool ViewStyle::ElementAllowsTranslucent(Element element) const {
@@ -696,13 +758,11 @@ void ViewStyle::AllocStyles(size_t sizeNew) {
 	}
 }
 
-void ViewStyle::CreateAndAddFont(const FontSpecification &fs, bool styleAutoComplete) {
+void ViewStyle::CreateAndAddFont(const FontSpecification &fs) {
 	if (fs.fontName) {
 		FontMap::iterator it = fonts.find(fs);
 		if (it == fonts.end()) {
-			fonts[fs] = std::make_unique<FontRealised>(styleAutoComplete);
-		} else {
-		  it->second->styleAutoCompleteOnly = false;
+			fonts[fs] = std::make_unique<FontRealised>();
 		}
 	}
 }
@@ -719,10 +779,15 @@ FontRealised *ViewStyle::Find(const FontSpecification &fs) {
 }
 
 void ViewStyle::FindMaxAscentDescent() noexcept {
-	for (const auto &font : fonts) {
-		if (maxAscent < font.second->measurements.ascent && !font.second->styleAutoCompleteOnly)
-			maxAscent = font.second->measurements.ascent;
-		if (maxDescent < font.second->measurements.descent && !font.second->styleAutoCompleteOnly)
-			maxDescent = font.second->measurements.descent;
+	for (size_t i = 0; i < styles.size(); i++) {
+		if (i == StyleCallTip || i == StyleAutoCompletion)
+			continue;
+
+		const auto &style = styles[i];
+
+		if (maxAscent < style.ascent)
+			maxAscent = style.ascent;
+		if (maxDescent < style.descent)
+			maxDescent = style.descent;
 	}
 }

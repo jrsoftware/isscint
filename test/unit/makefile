@@ -20,7 +20,6 @@ CXXFLAGS += --std=$(CXXSTD)
 
 ifdef CLANG
 CXX = clang++
-CXXFLAGS += -D_CRT_SECURE_NO_DEPRECATE
 ifdef USELIBCPP
 # macOS, use libc++ but don't have sanitizers
 CXXFLAGS += --stdlib=libc++
@@ -56,6 +55,7 @@ TESTEDSRC=\
  ../../src/CaseConvert.cxx \
  ../../src/CaseFolder.cxx \
  ../../src/CellBuffer.cxx \
+ ../../src/ChangeHistory.cxx \
  ../../src/CharacterCategoryMap.cxx \
  ../../src/CharClassify.cxx \
  ../../src/ContractionState.cxx \

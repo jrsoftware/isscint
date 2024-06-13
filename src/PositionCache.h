@@ -48,7 +48,6 @@ public:
  */
 class LineLayout {
 private:
-	friend class LineLayoutCache;
 	std::unique_ptr<int []>lineStarts;
 	int lenLineStarts;
 	/// Drawing is only performed for @a maxLineLength characters on each line.
@@ -84,8 +83,10 @@ public:
 	void operator=(LineLayout &&) = delete;
 	virtual ~LineLayout();
 	void Resize(int maxLineLength_);
+	void ReSet(Sci::Line lineNumber_, Sci::Position maxLineLength_);
 	void EnsureBidiData();
 	void Free() noexcept;
+	void ClearPositions();
 	void Invalidate(ValidLevel validity_) noexcept;
 	Sci::Line LineNumber() const noexcept;
 	bool CanHold(Sci::Line lineDoc, int lineLength_) const noexcept;
@@ -96,14 +97,18 @@ public:
 	Range SubLineRange(int subLine, Scope scope) const noexcept;
 	bool InLine(int offset, int line) const noexcept;
 	int SubLineFromPosition(int posInLine, PointEnd pe) const noexcept;
-	void SetLineStart(int line, int start);
+	void AddLineStart(Sci::Position start);
 	void SetBracesHighlight(Range rangeLine, const Sci::Position braces[],
 		char bracesMatchStyle, int xHighlight, bool ignoreStyle);
 	void RestoreBracesHighlight(Range rangeLine, const Sci::Position braces[], bool ignoreStyle);
 	int FindBefore(XYPOSITION x, Range range) const noexcept;
 	int FindPositionFromX(XYPOSITION x, Range range, bool charPosition) const noexcept;
 	Point PointFromPosition(int posInLine, int lineHeight, PointEnd pe) const noexcept;
+	XYPOSITION XInLine(Sci::Position index) const noexcept;
+	Interval Span(int start, int end) const noexcept;
+	Interval SpanByte(int index) const noexcept;
 	int EndLineStyle() const noexcept;
+	void WrapLine(const Document *pdoc, Sci::Position posLineStart, Wrap wrapState, XYPOSITION wrapWidth);
 };
 
 struct ScreenLine : public IScreenLine {
@@ -134,6 +139,14 @@ struct ScreenLine : public IScreenLine {
 	const Font *FontOfPosition(size_t position) const override;
 	XYPOSITION RepresentationWidth(size_t position) const override;
 	XYPOSITION TabPositionAfter(XYPOSITION xPosition) const override;
+};
+
+struct SignificantLines {
+	Sci::Line lineCaret;
+	Sci::Line lineTop;
+	Sci::Line linesOnScreen;
+	Scintilla::LineCache level;
+	bool LineMayCache(Sci::Line line) const noexcept;
 };
 
 /**
@@ -176,6 +189,9 @@ public:
 
 typedef std::map<unsigned int, Representation> MapRepresentation;
 
+const char *ControlCharacterString(unsigned char ch) noexcept;
+void Hexits(char *hexits, int ch) noexcept;
+
 class SpecialRepresentations {
 	MapRepresentation mapReprs;
 	unsigned short startByteHasReprs[0x100] {};
@@ -195,6 +211,7 @@ public:
 		return startByteHasReprs[ch] != 0;
 	}
 	void Clear();
+	void SetDefaultRepresentations(int dbcsCodePage);
 };
 
 struct TextSegment {
@@ -253,7 +270,7 @@ public:
 	virtual void SetSize(size_t size_) = 0;
 	virtual size_t GetSize() const noexcept = 0;
 	virtual void MeasureWidths(Surface *surface, const ViewStyle &vstyle, unsigned int styleNumber,
-		std::string_view sv, XYPOSITION *positions, bool needsLocking) = 0;
+		bool unicode, std::string_view sv, XYPOSITION *positions, bool needsLocking) = 0;
 };
 
 std::unique_ptr<IPositionCache> CreatePositionCache();

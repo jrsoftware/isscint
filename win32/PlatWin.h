@@ -19,7 +19,7 @@ extern void Platform_Initialise(void *hInstance) noexcept;
 extern void Platform_Finalise(bool fromDllMain) noexcept;
 
 constexpr RECT RectFromPRectangle(PRectangle prc) noexcept {
-	RECT rc = { static_cast<LONG>(prc.left), static_cast<LONG>(prc.top),
+	const RECT rc = { static_cast<LONG>(prc.left), static_cast<LONG>(prc.top),
 		static_cast<LONG>(prc.right), static_cast<LONG>(prc.bottom) };
 	return rc;
 }
@@ -43,11 +43,28 @@ inline HWND HwndFromWindow(const Window &w) noexcept {
 void *PointerFromWindow(HWND hWnd) noexcept;
 void SetWindowPointer(HWND hWnd, void *ptr) noexcept;
 
+HMONITOR MonitorFromWindowHandleScaling(HWND hWnd) noexcept;
+
 UINT DpiForWindow(WindowID wid) noexcept;
+float GetDeviceScaleFactorWhenGdiScalingActive(HWND hWnd) noexcept;
 
 int SystemMetricsForDpi(int nIndex, UINT dpi) noexcept;
 
 HCURSOR LoadReverseArrowCursor(UINT dpi) noexcept;
+
+class MouseWheelDelta {
+	int wheelDelta = 0;
+public:
+	bool Accumulate(WPARAM wParam) noexcept {
+		wheelDelta -= GET_WHEEL_DELTA_WPARAM(wParam);
+		return std::abs(wheelDelta) >= WHEEL_DELTA;
+	}
+	int Actions() noexcept {
+		const int actions = wheelDelta / WHEEL_DELTA;
+		wheelDelta = wheelDelta % WHEEL_DELTA;
+		return actions;
+	}
+};
 
 #if defined(USE_D2D)
 extern bool LoadD2D();

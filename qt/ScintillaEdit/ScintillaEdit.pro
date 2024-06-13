@@ -13,7 +13,7 @@ TEMPLATE = lib
 CONFIG += lib_bundle
 CONFIG += c++1z
 
-VERSION = 5.2.4
+VERSION = 5.3.8
 
 SOURCES += \
     ScintillaEdit.cpp \
@@ -47,6 +47,7 @@ SOURCES += \
     ../../src/CharClassify.cxx \
     ../../src/CharacterType.cxx \
     ../../src/CharacterCategoryMap.cxx \
+    ../../src/ChangeHistory.cxx \
     ../../src/CellBuffer.cxx \
     ../../src/CaseFolder.cxx \
     ../../src/CaseConvert.cxx \
@@ -63,7 +64,7 @@ OTHER_FILES +=
 
 INCLUDEPATH += ../ScintillaEditBase ../../include ../../src
 
-DEFINES += SCINTILLA_QT=1 MAKING_LIBRARY=1 _CRT_SECURE_NO_DEPRECATE=1
+DEFINES += SCINTILLA_QT=1 MAKING_LIBRARY=1
 CONFIG(release, debug|release) {
     DEFINES += NDEBUG=1
 }
