@@ -5,12 +5,9 @@
 from __future__ import with_statement
 from __future__ import unicode_literals
 
-import codecs, ctypes, os, sys, unittest
+import ctypes, string, sys, unittest
 
-if sys.platform == "win32":
-	import XiteWin as Xite
-else:
-	import XiteQt as Xite
+import XiteWin as Xite
 
 # Unicode line ends are only available for lexers that support the feature so requires lexers
 lexersAvailable = Xite.lexillaAvailable or Xite.scintillaIncludesLexers
@@ -51,13 +48,16 @@ class TestSimple(unittest.TestCase):
 
 	def testAddStyledText(self):
 		self.assertEquals(self.ed.EndStyled, 0)
-		self.ed.AddStyledText(2, b"x\002")
-		self.assertEquals(self.ed.Length, 1)
+		self.ed.AddStyledText(4, b"x\002y\377")
+		self.assertEquals(self.ed.Length, 2)
 		self.assertEquals(self.ed.GetCharAt(0), ord("x"))
 		self.assertEquals(self.ed.GetStyleAt(0), 2)
+		self.assertEquals(self.ed.GetStyleIndexAt(0), 2)
+		self.assertEquals(self.ed.GetStyleIndexAt(1), 255)
 		self.assertEquals(self.ed.StyledTextRange(0, 1), b"x\002")
+		self.assertEquals(self.ed.StyledTextRange(1, 2), b"y\377")
 		self.ed.ClearDocumentStyle()
-		self.assertEquals(self.ed.Length, 1)
+		self.assertEquals(self.ed.Length, 2)
 		self.assertEquals(self.ed.GetCharAt(0), ord("x"))
 		self.assertEquals(self.ed.GetStyleAt(0), 0)
 		self.assertEquals(self.ed.StyledTextRange(0, 1), b"x\0")
@@ -128,7 +128,7 @@ class TestSimple(unittest.TestCase):
 		self.assertEquals(self.ed.SelectionStart, 1)
 		self.assertEquals(self.ed.SelectionEnd, 3)
 		result = self.ed.GetSelText(0)
-		self.assertEquals(result, b"bc\0")
+		self.assertEquals(result, b"bc")
 		self.ed.ReplaceSel(0, b"1234")
 		self.assertEquals(self.ed.Length, 6)
 		self.assertEquals(self.ed.Contents(), b"a1234d")
@@ -164,6 +164,17 @@ class TestSimple(unittest.TestCase):
 		# Should now be "xxyy"
 		self.assertEquals(self.ed.Length, 4)
 		self.assertEquals(b"xxyy", self.ed.ByteRange(0,4))
+
+	def testTextRangeFull(self):
+		data = b"xy"
+		self.ed.InsertText(0, data)
+		self.assertEquals(self.ed.Length, 2)
+		self.assertEquals(data, self.ed.ByteRangeFull(0,2))
+
+		self.ed.InsertText(1, data)
+		# Should now be "xxyy"
+		self.assertEquals(self.ed.Length, 4)
+		self.assertEquals(b"xxyy", self.ed.ByteRangeFull(0,4))
 
 	def testInsertNul(self):
 		data = b"\0"
@@ -1187,6 +1198,12 @@ class TestSearch(unittest.TestCase):
 		pos = self.ed.FindBytes(0, self.ed.Length, b"big", 0)
 		self.assertEquals(pos, 2)
 
+	def testFindFull(self):
+		pos = self.ed.FindBytesFull(0, self.ed.Length, b"zzz", 0)
+		self.assertEquals(pos, -1)
+		pos = self.ed.FindBytesFull(0, self.ed.Length, b"big", 0)
+		self.assertEquals(pos, 2)
+
 	def testFindEmpty(self):
 		pos = self.ed.FindBytes(0, self.ed.Length, b"", 0)
 		self.assertEquals(pos, 0)
@@ -1235,6 +1252,28 @@ class TestSearch(unittest.TestCase):
 		self.assertEquals(0, self.ed.FindBytes(0, self.ed.Length, b"^a", flags))
 		self.assertEquals(10, self.ed.FindBytes(0, self.ed.Length, b"\t$", flags))
 		self.assertEquals(0, self.ed.FindBytes(0, self.ed.Length, b"([a]).*\0", flags))
+
+	def testCxx11REFind(self):
+		flags = self.ed.SCFIND_REGEXP | self.ed.SCFIND_CXX11REGEX
+		self.assertEquals(-1, self.ed.FindBytes(0, self.ed.Length, b"b.g", 0))
+		self.assertEquals(2, self.ed.FindBytes(0, self.ed.Length, b"b.g", flags))
+		self.assertEquals(2, self.ed.FindBytes(0, self.ed.Length, rb"\bb.g\b", flags))
+		self.assertEquals(-1, self.ed.FindBytes(0, self.ed.Length, b"b[A-Z]g",
+			flags | self.ed.SCFIND_MATCHCASE))
+		self.assertEquals(2, self.ed.FindBytes(0, self.ed.Length, b"b[a-z]g", flags))
+		self.assertEquals(6, self.ed.FindBytes(0, self.ed.Length, b"b[a-z]*t", flags))
+		self.assertEquals(0, self.ed.FindBytes(0, self.ed.Length, b"^a", flags))
+		self.assertEquals(10, self.ed.FindBytes(0, self.ed.Length, b"\t$", flags))
+		self.assertEquals(0, self.ed.FindBytes(0, self.ed.Length, b"([a]).*\0", flags))
+
+	def testCxx11RETooMany(self):
+		# For bug #2281
+		self.ed.InsertText(0, b"3ringsForTheElvenKing")
+		flags = self.ed.SCFIND_REGEXP | self.ed.SCFIND_CXX11REGEX
+		# Only MAXTAG (10) matches allocated, but doesn't modify a vulnerable address until 15
+		pattern = b"(.)" * 15
+		self.assertEquals(0, self.ed.FindBytes(0, self.ed.Length, pattern, flags))
+		self.assertEquals(0, self.ed.FindBytes(0, self.ed.Length, pattern, flags))
 
 	def testPhilippeREFind(self):
 		# Requires 1.,72
@@ -1854,6 +1893,32 @@ class TestModalSelection(unittest.TestCase):
 		self.assertEquals(self.ed.GetSelectionNAnchor(0), 0)
 		self.ed.ClearSelections()
 
+class TestTechnology(unittest.TestCase):
+	""" These tests are just to ensure that the calls set and retrieve values.
+	They assume running on a Direct2D compatible version of Windows.
+	They do not check visual appearance.
+	"""
+	def setUp(self):
+		self.xite = Xite.xiteFrame
+		self.ed = self.xite.ed
+		self.ed.ClearAll()
+		self.ed.EmptyUndoBuffer()
+
+	def tearDown(self):
+		self.ed.ClearAll()
+		self.ed.EmptyUndoBuffer()
+
+	def testTechnologyAndBufferedDraw(self):
+		self.ed.Technology = self.ed.SC_TECHNOLOGY_DEFAULT
+		self.assertEquals(self.ed.GetTechnology(), self.ed.SC_TECHNOLOGY_DEFAULT)
+		if sys.platform == "win32":
+			self.ed.Technology = self.ed.SC_TECHNOLOGY_DIRECTWRITE
+			self.assertEquals(self.ed.GetTechnology(), self.ed.SC_TECHNOLOGY_DIRECTWRITE)
+			self.assertEquals(self.ed.BufferedDraw, False)
+			self.ed.Technology = self.ed.SC_TECHNOLOGY_DEFAULT
+			self.assertEquals(self.ed.GetTechnology(), self.ed.SC_TECHNOLOGY_DEFAULT)
+			self.assertEquals(self.ed.BufferedDraw, True)
+
 class TestStyleAttributes(unittest.TestCase):
 	""" These tests are just to ensure that the calls set and retrieve values.
 	They do not check the visual appearance of the style attributes.
@@ -1959,6 +2024,11 @@ class TestStyleAttributes(unittest.TestCase):
 		self.ed.FontLocale = testLocale
 		self.assertEquals(self.ed.GetFontLocale(), testLocale)
 
+	def testCheckMonospaced(self):
+		self.assertEquals(self.ed.StyleGetCheckMonospaced(self.ed.STYLE_DEFAULT), 0)
+		self.ed.StyleSetCheckMonospaced(self.ed.STYLE_DEFAULT, 1)
+		self.assertEquals(self.ed.StyleGetCheckMonospaced(self.ed.STYLE_DEFAULT), 1)
+
 class TestElements(unittest.TestCase):
 	""" These tests are just to ensure that the calls set and retrieve values.
 	They do not check the visual appearance of the style attributes.
@@ -1974,7 +2044,7 @@ class TestElements(unittest.TestCase):
 
 	def tearDown(self):
 		pass
-		
+
 	def ElementColour(self, element):
 		# & 0xffffffff prevents sign extension issues
 		return self.ed.GetElementColour(element) & 0xffffffff
@@ -1996,6 +2066,14 @@ class TestElements(unittest.TestCase):
 		self.ed.SetElementColour(self.ed.SC_ELEMENT_LIST_BACK, self.testColourAlpha)
 		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_LIST_BACK), self.testColourAlpha)
 		self.assertTrue(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_LIST_BACK))
+
+	def testSubline(self):
+		# Default is false
+		self.assertEquals(self.ed.CaretLineHighlightSubLine, False)
+		self.ed.CaretLineHighlightSubLine = True
+		self.assertEquals(self.ed.CaretLineHighlightSubLine, True)
+		self.ed.CaretLineHighlightSubLine = False
+		self.assertEquals(self.ed.CaretLineHighlightSubLine, False)
 
 	def testReset(self):
 		self.ed.SetElementColour(self.ed.SC_ELEMENT_SELECTION_ADDITIONAL_TEXT, self.testColourAlpha)
@@ -2023,14 +2101,14 @@ class TestElements(unittest.TestCase):
 		self.assertEquals(self.ed.SelectionLayer, self.ed.SC_LAYER_OVER_TEXT)
 		self.ed.SelectionLayer = self.ed.SC_LAYER_BASE
 		self.assertEquals(self.ed.SelectionLayer, self.ed.SC_LAYER_BASE)
-		
+
 	def testCaretLine(self):
 		# Newer Layer / ElementColour API
 		self.assertEquals(self.ed.CaretLineLayer, 0)
 		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_CARET_LINE_BACK))
 		self.assertEquals(self.ed.CaretLineFrame, 0)
 		self.assertFalse(self.ed.CaretLineVisibleAlways)
-		
+
 		self.ed.CaretLineLayer = 2
 		self.assertEquals(self.ed.CaretLineLayer, 2)
 		self.ed.CaretLineFrame = 2
@@ -2039,7 +2117,7 @@ class TestElements(unittest.TestCase):
 		self.assertTrue(self.ed.CaretLineVisibleAlways)
 		self.ed.SetElementColour(self.ed.SC_ELEMENT_CARET_LINE_BACK, self.testColourAlpha)
 		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_CARET_LINE_BACK), self.testColourAlpha)
-		
+
 		self.RestoreCaretLine()
 
 	def testCaretLineLayerDiscouraged(self):
@@ -2065,13 +2143,13 @@ class TestElements(unittest.TestCase):
 		backColourTranslucent = backColour | (alpha << 24)
 		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_CARET_LINE_BACK), backColourTranslucent)
 		self.assertEquals(self.ed.CaretLineLayer, 2)
-		
+
 		self.ed.CaretLineBackAlpha = 0x100
 		self.assertEquals(self.ed.CaretLineBackAlpha, 0x100)
 		self.assertEquals(self.ed.CaretLineLayer, 0)	# SC_ALPHA_NOALPHA moved to base layer
-		
+
 		self.RestoreCaretLine()
-		
+
 		# Try other orders
 
 		self.ed.CaretLineBackAlpha = 0x100
@@ -2096,7 +2174,7 @@ class TestElements(unittest.TestCase):
 		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE_BACK))
 		self.assertEquals(self.ed.HotspotActiveFore, 0)
 		self.assertEquals(self.ed.HotspotActiveBack, 0)
-		
+
 		testColour = 0x804020
 		resetColour = 0x112233	# Doesn't get set
 		self.ed.SetHotspotActiveFore(1, testColour)
@@ -2107,7 +2185,7 @@ class TestElements(unittest.TestCase):
 		self.assertEquals(self.ed.HotspotActiveFore, 0)
 		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE))
 		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE), 0)
-		
+
 		translucentColour = 0x50403020
 		self.ed.SetElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE, translucentColour)
 		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE), translucentColour)
@@ -2676,6 +2754,46 @@ class TestAutoComplete(unittest.TestCase):
 
 		self.assertEquals(self.ed.AutoCActive(), 0)
 
+	def testAutoCustomSort(self):
+		# Checks bug #2294 where SC_ORDER_CUSTOM with an empty list asserts
+		# https://sourceforge.net/p/scintilla/bugs/2294/
+		self.assertEquals(self.ed.AutoCGetOrder(), self.ed.SC_ORDER_PRESORTED)
+
+		self.ed.AutoCSetOrder(self.ed.SC_ORDER_CUSTOM)
+		self.assertEquals(self.ed.AutoCGetOrder(), self.ed.SC_ORDER_CUSTOM)
+
+		#~ self.ed.AutoCShow(0, b"")
+		#~ self.ed.AutoCComplete()
+		#~ self.assertEquals(self.ed.Contents(), b"xxx\n")
+
+		self.ed.AutoCShow(0, b"a")
+		self.ed.AutoCComplete()
+		self.assertEquals(self.ed.Contents(), b"xxx\na")
+
+		self.ed.AutoCSetOrder(self.ed.SC_ORDER_PERFORMSORT)
+		self.assertEquals(self.ed.AutoCGetOrder(), self.ed.SC_ORDER_PERFORMSORT)
+
+		self.ed.AutoCShow(0, b"")
+		self.ed.AutoCComplete()
+		self.assertEquals(self.ed.Contents(), b"xxx\na")
+
+		self.ed.AutoCShow(0, b"b a")
+		self.ed.AutoCComplete()
+		self.assertEquals(self.ed.Contents(), b"xxx\naa")
+
+		self.ed.AutoCSetOrder(self.ed.SC_ORDER_PRESORTED)
+		self.assertEquals(self.ed.AutoCGetOrder(), self.ed.SC_ORDER_PRESORTED)
+
+		self.ed.AutoCShow(0, b"")
+		self.ed.AutoCComplete()
+		self.assertEquals(self.ed.Contents(), b"xxx\naa")
+
+		self.ed.AutoCShow(0, b"a b")
+		self.ed.AutoCComplete()
+		self.assertEquals(self.ed.Contents(), b"xxx\naaa")
+
+		self.assertEquals(self.ed.AutoCActive(), 0)
+
 	def testWriteOnly(self):
 		""" Checks that setting attributes doesn't crash or change tested behaviour
 		but does not check that the changed attributes are effective. """
@@ -2754,7 +2872,6 @@ class TestWordChars(unittest.TestCase):
 
 	def testDefaultWordChars(self):
 		# check that the default word chars are as expected
-		import string
 		data = self.ed.GetWordChars(None)
 		expected = set(string.digits + string.ascii_letters + '_') | \
 			set(chr(x) for x in range(0x80, 0x100))
@@ -2762,18 +2879,16 @@ class TestWordChars(unittest.TestCase):
 
 	def testDefaultWhitespaceChars(self):
 		# check that the default whitespace chars are as expected
-		import string
 		data = self.ed.GetWhitespaceChars(None)
-		expected = (set(chr(x) for x in (range(0, 0x20))) | set(' ')) - \
+		expected = (set(chr(x) for x in (range(0, 0x20))) | set(' ') | set('\x7f')) - \
 			set(['\r', '\n'])
 		self.assertCharSetsEqual(data, expected)
 
 	def testDefaultPunctuationChars(self):
 		# check that the default punctuation chars are as expected
-		import string
 		data = self.ed.GetPunctuationChars(None)
 		expected = set(chr(x) for x in range(0x20, 0x80)) - \
-			set(string.ascii_letters + string.digits + "\r\n_ ")
+			set(string.ascii_letters + string.digits + "\r\n\x7f_ ")
 		self.assertCharSetsEqual(data, expected)
 
 	def testCustomWordChars(self):

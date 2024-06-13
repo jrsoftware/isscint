@@ -3,7 +3,7 @@
 # Released to the public domain.
 
 # Update Scintilla files.
-# Update version numbers and modification dates in documentation and header files. 
+# Update version numbers and modification dates in documentation and header files.
 # Update make dependencies.
 # Requires Python 3.6 or later
 
@@ -54,10 +54,11 @@ def UpdateVersionNumbers(sci, root):
         "CFBundleShortVersionString", sci.versionDotted)
     ReplaceREInFile(cocoa / "Scintilla"/ "Scintilla.xcodeproj" / "project.pbxproj",
         "CURRENT_PROJECT_VERSION = [0-9.]+;",
-        f'CURRENT_PROJECT_VERSION = {sci.versionDotted};')
+        f'CURRENT_PROJECT_VERSION = {sci.versionDotted};',
+        0)
 
 def RegenerateAll(rootDirectory):
-    
+
     root = pathlib.Path(rootDirectory)
 
     scintillaBase = root.resolve()

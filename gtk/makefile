@@ -48,9 +48,11 @@ GTK_VERSION = $(if $(GTK3),gtk+-3.0,gtk+-2.0)
 # Enable Position Independent Code except on Windows where it is the default so the flag produces a warning
 ifndef windir
 BASE_FLAGS += -fPIC
+ifeq ($(shell uname),Darwin)
+LDFLAGS += -dynamiclib
+endif
 endif
 
-LDFLAGS += -dynamiclib
 LDFLAGS += -shared
 
 # Take care of changing Unix style '/' directory separator to '\' on Windows
@@ -69,12 +71,12 @@ endif
 COMPLIB=$(basedir)/bin/scintilla.a
 COMPONENT=$(basedir)/bin/libscintilla.$(SHAREDEXTENSION)
 
-vpath %.h $(srcdir) $(basedir)/src $(basedir)/include $(basedir)/lexlib
+vpath %.h $(srcdir) $(basedir)/src $(basedir)/include
 vpath %.c $(srcdir)
-vpath %.cxx $(srcdir) $(basedir)/src $(basedir)/lexlib $(basedir)/lexers
+vpath %.cxx $(srcdir) $(basedir)/src
 
-INCLUDES=-I $(basedir)/include -I $(basedir)/src -I $(basedir)/lexlib
-DEFINES += -DGTK -DSCI_LEXER
+INCLUDES=-I $(basedir)/include -I $(basedir)/src
+DEFINES += -DGTK
 BASE_FLAGS += $(WARNINGS)
 
 ifdef NO_CXX11_REGEX
@@ -119,8 +121,6 @@ analyze:
 depend deps.mak:
 	$(PYTHON) DepGen.py
 
-LEX_OBJS:=$(addsuffix .o,$(basename $(sort $(notdir $(wildcard $(basedir)/lexers/Lex*.cxx)))))
-
 # Required for base Scintilla
 SRC_OBJS = \
 	AutoComplete.o \
@@ -160,18 +160,12 @@ GTK_OBJS = \
 	ScintillaGTK.o \
 	ScintillaGTKAccessible.o
 
-$(COMPLIB): $(SRC_OBJS) $(GTK_OBJS) $(MARSHALLER) $(LEX_OBJS)
+$(COMPLIB): $(SRC_OBJS) $(GTK_OBJS) $(MARSHALLER)
 	$(AR) $(ARFLAGS) $@ $^
 	$(RANLIB) $@
 
 $(COMPONENT): $(SRC_OBJS) $(GTK_OBJS) $(MARSHALLER)
 	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(CONFIGLIB)
 
-Catalogue.o: Catalogue.cxx
-	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -D SCI_LEXER -D SCI_EMPTYCATALOGUE -c $< -o $@
-
-CatalogueL.o: Catalogue.cxx
-	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -D SCI_LEXER -c $< -o $@
-
-# Automatically generate header dependencies with "make deps"
+# Automatically generate header dependencies with "make depend"
 include deps.mak

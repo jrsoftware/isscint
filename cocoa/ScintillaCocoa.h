@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <cstdlib>
+#include <cstdint>
 #include <cstdio>
 #include <ctime>
 
@@ -83,15 +84,15 @@ extern "C" NSString *ScintillaRecPboardType;
 namespace Scintilla::Internal {
 
 /**
- * Main scintilla class, implemented for OS X (Cocoa).
+ * Main scintilla class, implemented for macOS (Cocoa).
  */
 class ScintillaCocoa : public ScintillaBase {
 private:
-	ScintillaView *sciView;
+	__weak ScintillaView *sciView;
 	TimerTarget *timerTarget;
 	NSEvent *lastMouseEvent;
 
-	id<ScintillaNotificationProtocol> delegate;
+	__weak id<ScintillaNotificationProtocol> delegate;
 
 	SciNotifyFunc	notifyProc;
 	intptr_t notifyObj;
@@ -159,7 +160,7 @@ public:
 	void SetVerticalScrollPos() override;
 	void SetHorizontalScrollPos() override;
 	bool ModifyScrollBars(Sci::Line nMax, Sci::Line nPage) override;
-	bool SetScrollingSize(void);
+	bool SetScrollingSize();
 	void Resize();
 	void UpdateForScroll();
 

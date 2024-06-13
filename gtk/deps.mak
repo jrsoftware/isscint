@@ -11,6 +11,7 @@ PlatGTK.o: \
 	../include/ScintillaWidget.h \
 	../src/XPM.h \
 	../src/UniConversion.h \
+	Wrappers.h \
 	Converter.h
 ScintillaGTK.o: \
 	ScintillaGTK.cxx \
@@ -53,6 +54,7 @@ ScintillaGTK.o: \
 	../src/Editor.h \
 	../src/AutoComplete.h \
 	../src/ScintillaBase.h \
+	Wrappers.h \
 	ScintillaGTK.h \
 	scintilla-marshal.h \
 	ScintillaGTKAccessible.h \
@@ -98,6 +100,7 @@ ScintillaGTKAccessible.o: \
 	../src/Editor.h \
 	../src/AutoComplete.h \
 	../src/ScintillaBase.h \
+	Wrappers.h \
 	ScintillaGTK.h \
 	ScintillaGTKAccessible.h
 AutoComplete.o: \
@@ -125,6 +128,7 @@ CaseConvert.o: \
 	../src/UniConversion.h
 CaseFolder.o: \
 	../src/CaseFolder.cxx \
+	../src/CharacterType.h \
 	../src/CaseFolder.h \
 	../src/CaseConvert.h
 CellBuffer.o: \
@@ -250,6 +254,7 @@ Editor.o: \
 	../src/CaseFolder.h \
 	../src/Document.h \
 	../src/UniConversion.h \
+	../src/DBCS.h \
 	../src/Selection.h \
 	../src/PositionCache.h \
 	../src/EditModel.h \
@@ -310,6 +315,8 @@ KeyMap.o: \
 	../include/ScintillaTypes.h \
 	../include/ScintillaMessages.h \
 	../src/Debugging.h \
+	../src/Geometry.h \
+	../src/Platform.h \
 	../src/KeyMap.h
 LineMarker.o: \
 	../src/LineMarker.cxx \
@@ -375,6 +382,7 @@ PositionCache.o: \
 	../src/Debugging.h \
 	../src/Geometry.h \
 	../src/Platform.h \
+	../src/CharacterType.h \
 	../src/CharacterCategoryMap.h \
 	../src/Position.h \
 	../src/UniqueString.h \
