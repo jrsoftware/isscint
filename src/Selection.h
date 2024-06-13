@@ -49,6 +49,9 @@ public:
 	void Add(Sci::Position increment) noexcept {
 		position = position + increment;
 	}
+	void AddVirtualSpace(Sci::Position increment) noexcept {
+		SetVirtualSpace(virtualSpace + increment);
+	}
 	bool IsValid() const noexcept {
 		return position >= 0;
 	}
@@ -80,6 +83,12 @@ struct SelectionSegment {
 			start = p;
 		if (end < p)
 			end = p;
+	}
+	SelectionSegment Subtract(Sci::Position increment) const noexcept {
+		SelectionSegment ret(start, end);
+		ret.start.Add(-increment);
+		ret.end.Add(-increment);
+		return ret;
 	}
 };
 

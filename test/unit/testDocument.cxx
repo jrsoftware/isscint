@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <vector>
+#include <set>
 #include <optional>
 #include <algorithm>
 #include <memory>
@@ -36,6 +37,18 @@
 
 using namespace Scintilla;
 using namespace Scintilla::Internal;
+
+#if !defined(_WIN32) && !defined(NO_CXX11_REGEX)
+// set global locale to pass std::regex related tests
+// see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63776
+struct GlobalLocaleInitializer {
+	GlobalLocaleInitializer() {
+		try {
+			std::locale::global(std::locale("en_US.UTF-8"));
+		} catch (...) {}
+	}
+} globalLocaleInitializer;
+#endif
 
 // Test Document.
 
@@ -142,6 +155,7 @@ TEST_CASE("Document") {
 		REQUIRE(1 == doc.document.LinesTotal());
 		REQUIRE(0 == doc.document.LineStart(0));
 		REQUIRE(0 == doc.document.LineFromPosition(0));
+		REQUIRE(0 == doc.document.LineStartPosition(0));
 		REQUIRE(sLength == doc.document.LineStart(1));
 		REQUIRE(0 == doc.document.LineFromPosition(static_cast<int>(sLength)));
 		REQUIRE(doc.document.CanUndo());
@@ -452,6 +466,52 @@ TEST_CASE("Document") {
 		REQUIRE(doc.NextPosition(15, -1) == 14);
 	}
 
+	SECTION("RegexSearchAndSubstitution") {
+		DocPlus doc("\n\r\r\n 1a\xCE\x93z \n\r\r\n 2b\xCE\x93y \n\r\r\n", CpUtf8);// 1a gamma z 2b gamma y
+		const std::string finding = R"(\d+(\w+))";
+		Sci::Position lengthFinding = finding.length();
+		Sci::Position location = doc.FindNeedle(finding, FindOption::RegExp | FindOption::Posix, &lengthFinding);
+		REQUIRE(location == 5);
+		REQUIRE(lengthFinding == 5);
+
+		const std::string_view substituteText = R"(\t\1\n)";
+		Sci::Position lengthsubstitute = substituteText.length();
+		std::string substituted = doc.document.SubstituteByPosition(substituteText.data(), &lengthsubstitute);
+		REQUIRE(lengthsubstitute == 6);
+		REQUIRE(substituted == "\ta\xCE\x93z\n");
+
+		lengthFinding = finding.length();
+		location = doc.FindNeedleReverse(finding, FindOption::RegExp | FindOption::Posix, &lengthFinding);
+		REQUIRE(location == 16);
+		REQUIRE(lengthFinding == 5);
+
+		lengthsubstitute = substituteText.length();
+		substituted = doc.document.SubstituteByPosition(substituteText.data(), &lengthsubstitute);
+		REQUIRE(lengthsubstitute == 6);
+		REQUIRE(substituted == "\tb\xCE\x93y\n");
+
+		#ifndef NO_CXX11_REGEX
+		lengthFinding = finding.length();
+		location = doc.FindNeedle(finding, FindOption::RegExp | FindOption::Cxx11RegEx, &lengthFinding);
+		REQUIRE(location == 5);
+		REQUIRE(lengthFinding == 5);
+
+		lengthsubstitute = substituteText.length();
+		substituted = doc.document.SubstituteByPosition(substituteText.data(), &lengthsubstitute);
+		REQUIRE(lengthsubstitute == 6);
+		REQUIRE(substituted == "\ta\xCE\x93z\n");
+
+		lengthFinding = finding.length();
+		location = doc.FindNeedleReverse(finding, FindOption::RegExp | FindOption::Cxx11RegEx, &lengthFinding);
+		REQUIRE(location == 16);
+		REQUIRE(lengthFinding == 5);
+
+		lengthsubstitute = substituteText.length();
+		substituted = doc.document.SubstituteByPosition(substituteText.data(), &lengthsubstitute);
+		REQUIRE(lengthsubstitute == 6);
+		REQUIRE(substituted == "\tb\xCE\x93y\n");
+		#endif
+	}
 }
 
 TEST_CASE("Words") {
@@ -599,5 +659,74 @@ TEST_CASE("SafeSegment") {
 		length = doc.document.SafeSegment(text);
 		REQUIRE(text[length - 1] == '\x7b');
 		REQUIRE(text[length] == '\x8c');
+	}
+}
+
+TEST_CASE("PerLine") {
+	SECTION("LineMarkers") {
+		DocPlus doc("1\n2\n", CpUtf8);
+		REQUIRE(doc.document.LinesTotal() == 3);
+		const int mh1 = doc.document.AddMark(0, 0);
+		const int mh2 = doc.document.AddMark(1, 1);
+		const int mh3 = doc.document.AddMark(2, 2);
+		REQUIRE(mh1 != -1);
+		REQUIRE(mh2 != -1);
+		REQUIRE(mh3 != -1);
+		REQUIRE(doc.document.AddMark(3, 3) == -1);
+
+		// delete first character, no change
+		REQUIRE(doc.document.CharAt(0) == '1');
+		doc.document.DeleteChars(0, 1);
+		REQUIRE(doc.document.LinesTotal() == 3);
+		REQUIRE(doc.document.MarkerHandleFromLine(0, 0) == mh1);
+		REQUIRE(doc.document.MarkerHandleFromLine(0, 1) == -1);
+		REQUIRE(doc.document.MarkerHandleFromLine(1, 0) == mh2);
+		REQUIRE(doc.document.MarkerHandleFromLine(1, 1) == -1);
+
+		// delete first line, so merged
+		REQUIRE(doc.document.CharAt(0) == '\n');
+		doc.document.DeleteChars(0, 1);
+		REQUIRE(doc.document.CharAt(0) == '2');
+		const std::set handleSet {mh1, mh2};
+		const int handle1 = doc.document.MarkerHandleFromLine(0, 0);
+		const int handle2 = doc.document.MarkerHandleFromLine(0, 1);
+		REQUIRE(handle1 != handle2);
+		REQUIRE(handleSet.count(handle1) == 1);
+		REQUIRE(handleSet.count(handle2) == 1);
+		REQUIRE(doc.document.MarkerHandleFromLine(0, 2) == -1);
+		REQUIRE(doc.document.MarkerHandleFromLine(1, 0) == mh3);
+		REQUIRE(doc.document.MarkerHandleFromLine(1, 1) == -1);
+	}
+
+	SECTION("LineAnnotation") {
+		DocPlus doc("1\n2\n", CpUtf8);
+		REQUIRE(doc.document.LinesTotal() == 3);
+		Sci::Position length = doc.document.Length();
+		doc.document.AnnotationSetText(0, "1");
+		doc.document.AnnotationSetText(1, "1\n2");
+		doc.document.AnnotationSetText(2, "1\n2\n3");
+		REQUIRE(doc.document.AnnotationLines(0) == 1);
+		REQUIRE(doc.document.AnnotationLines(1) == 2);
+		REQUIRE(doc.document.AnnotationLines(2) == 3);
+		REQUIRE(doc.document.AnnotationLines(3) == 0);
+
+		// delete last line
+		length -= 1;
+		doc.document.DeleteChars(length, 1);
+		// Deleting the last line moves its 3-line annotation to previous line,
+		// deleting the 2-line annotation of the previous line.
+		REQUIRE(doc.document.LinesTotal() == 2);
+		REQUIRE(doc.document.AnnotationLines(0) == 1);
+		REQUIRE(doc.document.AnnotationLines(1) == 3);
+		REQUIRE(doc.document.AnnotationLines(2) == 0);
+
+		// delete last character, no change
+		length -= 1;
+		REQUIRE(doc.document.CharAt(length) == '2');
+		doc.document.DeleteChars(length, 1);
+		REQUIRE(doc.document.LinesTotal() == 2);
+		REQUIRE(doc.document.AnnotationLines(0) == 1);
+		REQUIRE(doc.document.AnnotationLines(1) == 3);
+		REQUIRE(doc.document.AnnotationLines(2) == 0);
 	}
 }

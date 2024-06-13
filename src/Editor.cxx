@@ -25,6 +25,10 @@
 #include <iterator>
 #include <memory>
 #include <chrono>
+#include <atomic>
+#include <mutex>
+#include <thread>
+#include <future>
 
 #include "ScintillaTypes.h"
 #include "ScintillaMessages.h"
@@ -212,50 +216,7 @@ void Editor::Finalise() {
 }
 
 void Editor::SetRepresentations() {
-	reprs.Clear();
-
-	// C0 control set
-	const char *const reps[] = {
-		"NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
-		"BS", "HT", "LF", "VT", "FF", "CR", "SO", "SI",
-		"DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
-		"CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US"
-	};
-	for (size_t j=0; j < std::size(reps); j++) {
-		const char c[2] = { static_cast<char>(j), 0 };
-		reprs.SetRepresentation(std::string_view(c, 1), reps[j]);
-	}
-	reprs.SetRepresentation("\x7f", "DEL");
-
-	const int dbcsCodePage = pdoc->dbcsCodePage;
-	// C1 control set
-	// As well as Unicode mode, ISO-8859-1 should use these
-	if (CpUtf8 == dbcsCodePage) {
-		const char *const repsC1[] = {
-			"PAD", "HOP", "BPH", "NBH", "IND", "NEL", "SSA", "ESA",
-			"HTS", "HTJ", "VTS", "PLD", "PLU", "RI", "SS2", "SS3",
-			"DCS", "PU1", "PU2", "STS", "CCH", "MW", "SPA", "EPA",
-			"SOS", "SGCI", "SCI", "CSI", "ST", "OSC", "PM", "APC"
-		};
-		for (size_t j=0; j < std::size(repsC1); j++) {
-			const char c1[3] = { '\xc2',  static_cast<char>(0x80+j), 0 };
-			reprs.SetRepresentation(c1, repsC1[j]);
-		}
-		reprs.SetRepresentation("\xe2\x80\xa8", "LS");
-		reprs.SetRepresentation("\xe2\x80\xa9", "PS");
-	}
-
-	// Invalid as single bytes in multi-byte encodings
-	if (dbcsCodePage) {
-		for (int k = 0x80; k < 0x100; k++) {
-			if ((CpUtf8 == dbcsCodePage) || !IsDBCSValidSingleByte(dbcsCodePage, k)) {
-				const char hiByte[2] = { static_cast<char>(k), 0 };
-				char hexits[4];
-				Hexits(hexits, k);
-				reprs.SetRepresentation(hiByte, hexits);
-			}
-		}
-	}
+	reprs.SetDefaultRepresentations(pdoc->dbcsCodePage);
 }
 
 void Editor::DropGraphics() noexcept {
@@ -263,7 +224,7 @@ void Editor::DropGraphics() noexcept {
 	view.DropGraphics();
 }
 
-void Editor::InvalidateStyleData() {
+void Editor::InvalidateStyleData() noexcept {
 	stylesValid = false;
 	vs.technology = technology;
 	DropGraphics();
@@ -289,13 +250,17 @@ void Editor::RefreshStyleData() {
 	}
 }
 
+bool Editor::HasMarginWindow() const noexcept {
+	return wMargin.Created();
+}
+
 Point Editor::GetVisibleOriginInMain() const {
 	return Point(0, 0);
 }
 
 PointDocument Editor::DocumentPointFromView(Point ptView) const {
 	PointDocument ptDocument(ptView);
-	if (wMargin.GetID()) {
+	if (HasMarginWindow()) {
 		const Point ptOrigin = GetVisibleOriginInMain();
 		ptDocument.x += ptOrigin.x;
 		ptDocument.y += ptOrigin.y;
@@ -306,11 +271,16 @@ PointDocument Editor::DocumentPointFromView(Point ptView) const {
 	return ptDocument;
 }
 
-Sci::Line Editor::TopLineOfMain() const {
-	if (wMargin.GetID())
+Sci::Line Editor::TopLineOfMain() const noexcept {
+	if (HasMarginWindow())
 		return 0;
 	else
 		return topLine;
+}
+
+Point Editor::ClientSize() const {
+	const PRectangle rcClient = GetClientRectangle();
+	return Point(rcClient.Width(), rcClient.Height());
 }
 
 PRectangle Editor::GetClientRectangle() const {
@@ -329,8 +299,8 @@ PRectangle Editor::GetTextRectangle() const {
 }
 
 Sci::Line Editor::LinesOnScreen() const {
-	const PRectangle rcClient = GetClientRectangle();
-	const int htClient = static_cast<int>(rcClient.bottom - rcClient.top);
+	const Point sizeClient = ClientSize();
+	const int htClient = static_cast<int>(sizeClient.y);
 	//Platform::DebugPrintf("lines on screen = %d\n", htClient / lineHeight + 1);
 	return htClient / vs.lineHeight;
 }
@@ -432,7 +402,7 @@ Sci::Position Editor::PositionFromLineX(Sci::Line lineDoc, int x) {
 	return SPositionFromLineX(lineDoc, x).Position();
 }
 
-Sci::Line Editor::LineFromLocation(Point pt) const {
+Sci::Line Editor::LineFromLocation(Point pt) const noexcept {
 	return pcs->DocFromDisplay(static_cast<int>(pt.y) / vs.lineHeight + topLine);
 }
 
@@ -485,7 +455,7 @@ void Editor::Redraw() {
 	//Platform::DebugPrintf("Redraw all\n");
 	const PRectangle rcClient = GetClientRectangle();
 	wMain.InvalidateRectangle(rcClient);
-	if (wMargin.GetID()) {
+	if (HasMarginWindow()) {
 		wMargin.InvalidateAll();
 	} else if (paintState == PaintState::notPainting) {
 		redrawPendingText = true;
@@ -494,12 +464,12 @@ void Editor::Redraw() {
 
 void Editor::RedrawSelMargin(Sci::Line line, bool allAfter) {
 	const bool markersInText = vs.maskInLine || vs.maskDrawInText;
-	if (!wMargin.GetID() || markersInText) {	// May affect text area so may need to abandon and retry
+	if (!HasMarginWindow() || markersInText) {	// May affect text area so may need to abandon and retry
 		if (AbandonPaint()) {
 			return;
 		}
 	}
-	if (wMargin.GetID() && markersInText) {
+	if (HasMarginWindow() && markersInText) {
 		Redraw();
 		return;
 	}
@@ -532,7 +502,7 @@ void Editor::RedrawSelMargin(Sci::Line line, bool allAfter) {
 		if (rcMarkers.Empty())
 			return;
 	}
-	if (wMargin.GetID()) {
+	if (HasMarginWindow()) {
 		const Point ptOrigin = GetVisibleOriginInMain();
 		rcMarkers.Move(-ptOrigin.x, -ptOrigin.y);
 		wMargin.InvalidateRectangle(rcMarkers);
@@ -570,7 +540,7 @@ void Editor::InvalidateRange(Sci::Position start, Sci::Position end) {
 	RedrawRect(RectangleFromRange(Range(start, end), view.LinesOverlap() ? vs.lineOverlap : 0));
 }
 
-Sci::Position Editor::CurrentPosition() const {
+Sci::Position Editor::CurrentPosition() const noexcept {
 	return sel.MainCaret();
 }
 
@@ -578,11 +548,11 @@ bool Editor::SelectionEmpty() const noexcept {
 	return sel.Empty();
 }
 
-SelectionPosition Editor::SelectionStart() {
+SelectionPosition Editor::SelectionStart() noexcept {
 	return sel.RangeMain().Start();
 }
 
-SelectionPosition Editor::SelectionEnd() {
+SelectionPosition Editor::SelectionEnd() noexcept {
 	return sel.RangeMain().End();
 }
 
@@ -653,15 +623,11 @@ void Editor::InvalidateWholeSelection() {
    at the beginning and end of the region lines. */
 SelectionRange Editor::LineSelectionRange(SelectionPosition currentPos_, SelectionPosition anchor_) const {
 	if (currentPos_ > anchor_) {
-		anchor_ = SelectionPosition(
-			pdoc->LineStart(pdoc->LineFromPosition(anchor_.Position())));
-		currentPos_ = SelectionPosition(
-			pdoc->LineEnd(pdoc->LineFromPosition(currentPos_.Position())));
+		anchor_ = SelectionPosition(pdoc->LineStartPosition(anchor_.Position()));
+		currentPos_ = SelectionPosition(pdoc->LineEndPosition(currentPos_.Position()));
 	} else {
-		currentPos_ = SelectionPosition(
-			pdoc->LineStart(pdoc->LineFromPosition(currentPos_.Position())));
-		anchor_ = SelectionPosition(
-			pdoc->LineEnd(pdoc->LineFromPosition(anchor_.Position())));
+		currentPos_ = SelectionPosition(pdoc->LineStartPosition(currentPos_.Position()));
+		anchor_ = SelectionPosition(pdoc->LineEndPosition(anchor_.Position()));
 	}
 	return SelectionRange(currentPos_, anchor_);
 }
@@ -797,9 +763,7 @@ void Editor::MultipleSelectAdd(AddNumber addNumber) {
 bool Editor::RangeContainsProtected(Sci::Position start, Sci::Position end) const noexcept {
 	if (vs.ProtectionActive()) {
 		if (start > end) {
-			const Sci::Position t = start;
-			start = end;
-			end = t;
+			std::swap(start, end);
 		}
 		for (Sci::Position pos = start; pos < end; pos++) {
 			if (vs.styles[pdoc->StyleIndexAt(pos)].IsProtected())
@@ -809,7 +773,7 @@ bool Editor::RangeContainsProtected(Sci::Position start, Sci::Position end) cons
 	return false;
 }
 
-bool Editor::SelectionContainsProtected() const {
+bool Editor::SelectionContainsProtected() const noexcept {
 	for (size_t r=0; r<sel.Count(); r++) {
 		if (RangeContainsProtected(sel.Range(r).Start().Position(),
 			sel.Range(r).End().Position())) {
@@ -942,7 +906,7 @@ SelectionPosition Editor::MovePositionSoVisible(Sci::Position pos, int moveDir) 
 }
 
 Point Editor::PointMainCaret() {
-	return LocationFromPosition(sel.Range(sel.Main()).caret);
+	return LocationFromPosition(sel.RangeMain().caret);
 }
 
 /**
@@ -1008,6 +972,7 @@ void Editor::VerticalCentreCaret() {
 	const Sci::Line newTop = lineDisplay - (LinesOnScreen() / 2);
 	if (topLine != newTop) {
 		SetTopLine(newTop > 0 ? newTop : 0);
+		SetVerticalScrollPos();
 		RedrawRect(GetClientRectangle());
 	}
 }
@@ -1015,7 +980,10 @@ void Editor::VerticalCentreCaret() {
 void Editor::MoveSelectedLines(int lineDelta) {
 
 	if (sel.IsRectangular()) {
-		return;
+		// Convert to stream selection
+		const SelectionRange rangeRectangular = sel.Rectangular();
+		sel.Clear();
+		sel.SetSelection(rangeRectangular);
 	}
 
 	// if selection doesn't start at the beginning of the line, set the new start
@@ -1054,8 +1022,7 @@ void Editor::MoveSelectedLines(int lineDelta) {
 	}
 	SetSelection(selectionStart, selectionEnd);
 
-	SelectionText selectedText;
-	CopySelectionRange(&selectedText);
+	const std::string selectedText = RangeText(selectionStart, selectionEnd);
 
 	const Point currentLocation = LocationFromPosition(CurrentPosition());
 	const Sci::Line currentLine = LineFromLocation(currentLocation);
@@ -1064,14 +1031,14 @@ void Editor::MoveSelectedLines(int lineDelta) {
 		SetSelection(pdoc->MovePositionOutsideChar(selectionStart - 1, -1), selectionEnd);
 	ClearSelection();
 
-	const char *eol = StringFromEOLMode(pdoc->eolMode);
+	const std::string_view eol = pdoc->EOLString();
 	if (currentLine + lineDelta >= pdoc->LinesTotal())
-		pdoc->InsertString(pdoc->Length(), eol, strlen(eol));
+		pdoc->InsertString(pdoc->Length(), eol);
 	GoToLine(currentLine + lineDelta);
 
-	Sci::Position selectionLength = pdoc->InsertString(CurrentPosition(), selectedText.Data(), selectedText.Length());
+	Sci::Position selectionLength = pdoc->InsertString(CurrentPosition(), selectedText);
 	if (appendEol) {
-		const Sci::Position lengthInserted = pdoc->InsertString(CurrentPosition() + selectionLength, eol, strlen(eol));
+		const Sci::Position lengthInserted = pdoc->InsertString(CurrentPosition() + selectionLength, eol);
 		selectionLength += lengthInserted;
 	}
 	SetSelection(CurrentPosition(), CurrentPosition() + selectionLength);
@@ -1180,9 +1147,11 @@ Editor::XYScrollPosition Editor::XYScrollToMakeVisible(const SelectionRange &ran
 		// It should be possible to scroll the window to show the caret,
 		// but this fails to remove the caret on GTK+
 		if (bSlop) {	// A margin is defined
-			Sci::Line yMoveT, yMoveB;
+			Sci::Line yMoveT = 0;
+			Sci::Line yMoveB = 0;
 			if (bStrict) {
-				Sci::Line yMarginT, yMarginB;
+				Sci::Line yMarginT = 0;
+				Sci::Line yMarginB = 0;
 				if (!FlagSet(options, XYScrollOptions::useMargin)) {
 					// In drag mode, avoid moves
 					// otherwise, a double click will select several lines.
@@ -1277,9 +1246,11 @@ Editor::XYScrollPosition Editor::XYScrollToMakeVisible(const SelectionRange &ran
 		const bool bEven = FlagSet(policies.x.policy, CaretPolicy::Even);
 
 		if (bSlop) {	// A margin is defined
-			int xMoveL, xMoveR;
+			int xMoveL = 0;
+			int xMoveR = 0;
 			if (bStrict) {
-				int xMarginL, xMarginR;
+				int xMarginL = 0;
+				int xMarginR = 0;
 				if (!FlagSet(options, XYScrollOptions::useMargin)) {
 					// In drag mode, avoid moves unless very near of the margin
 					// otherwise, a simple click will select text.
@@ -1505,6 +1476,130 @@ bool Editor::WrapOneLine(Surface *surface, Sci::Line lineToWrap) {
 	return pcs->SetHeight(lineToWrap, linesWrapped);
 }
 
+namespace {
+
+// Lines less than lengthToMultiThread are laid out in blocks in parallel.
+// Longer lines are multi-threaded inside LayoutLine.
+// This allows faster processing when lines differ greatly in length and thus time to lay out.
+constexpr Sci::Position lengthToMultiThread = 4000;
+
+}
+
+bool Editor::WrapBlock(Surface *surface, Sci::Line lineToWrap, Sci::Line lineToWrapEnd) {
+
+	const size_t linesBeingWrapped = static_cast<size_t>(lineToWrapEnd - lineToWrap);
+
+	std::vector<int> linesAfterWrap(linesBeingWrapped);
+
+	size_t threads = std::min<size_t>({ linesBeingWrapped, view.maxLayoutThreads });
+	if (!surface->SupportsFeature(Supports::ThreadSafeMeasureWidths)) {
+		threads = 1;
+	}
+
+	const bool multiThreaded = threads > 1;
+
+	ElapsedPeriod epWrapping;
+
+	// Wrap all the short lines in multiple threads
+
+	// If only 1 thread needed then use the main thread, else spin up multiple
+	const std::launch policy = multiThreaded ? std::launch::async : std::launch::deferred;
+
+	std::atomic<size_t> nextIndex = 0;
+
+	// Lines that are less likely to be re-examined should not be read from or written to the cache.
+	const SignificantLines significantLines {
+		pdoc->SciLineFromPosition(sel.MainCaret()),
+		pcs->DocFromDisplay(topLine),
+		LinesOnScreen() + 1,
+		view.llc.GetLevel(),
+	};
+
+	// Protect the line layout cache from being accessed from multiple threads simultaneously
+	std::mutex mutexRetrieve;
+
+	std::vector<std::future<void>> futures;
+	for (size_t th = 0; th < threads; th++) {
+		std::future<void> fut = std::async(policy,
+			[=, &surface, &nextIndex, &linesAfterWrap, &mutexRetrieve]() {
+			// llTemporary is reused for non-significant lines, avoiding allocation costs.
+			std::shared_ptr<LineLayout> llTemporary = std::make_shared<LineLayout>(-1, 200);
+			while (true) {
+				const size_t i = nextIndex.fetch_add(1, std::memory_order_acq_rel);
+				if (i >= linesBeingWrapped) {
+					break;
+				}
+				const Sci::Line lineNumber = lineToWrap + i;
+				const Range rangeLine = pdoc->LineRange(lineNumber);
+				const Sci::Position lengthLine = rangeLine.Length();
+				if (lengthLine < lengthToMultiThread) {
+					std::shared_ptr<LineLayout> ll;
+					if (significantLines.LineMayCache(lineNumber)) {
+						std::lock_guard<std::mutex> guard(mutexRetrieve);
+						ll = view.RetrieveLineLayout(lineNumber, *this);
+					} else {
+						ll = llTemporary;
+						ll->ReSet(lineNumber, lengthLine);
+					}
+					view.LayoutLine(*this, surface, vs, ll.get(), wrapWidth, multiThreaded);
+					linesAfterWrap[i] = ll->lines;
+				}
+			}
+		});
+		futures.push_back(std::move(fut));
+	}
+	for (const std::future<void> &f : futures) {
+		f.wait();
+	}
+	// End of multiple threads
+
+	// Multiply duration by number of threads to produce (near) equivalence to duration if single threaded
+	const double durationShortLines = epWrapping.Duration(true);
+	const double durationShortLinesThreads = durationShortLines * threads;
+
+	// Wrap all the long lines in the main thread.
+	// LayoutLine may then multi-thread over segments in each line.
+
+	std::shared_ptr<LineLayout> llLarge = std::make_shared<LineLayout>(-1, 200);
+	for (size_t indexLarge = 0; indexLarge < linesBeingWrapped; indexLarge++) {
+		const Sci::Line lineNumber = lineToWrap + indexLarge;
+		const Range rangeLine = pdoc->LineRange(lineNumber);
+		const Sci::Position lengthLine = rangeLine.Length();
+		if (lengthLine >= lengthToMultiThread) {
+			std::shared_ptr<LineLayout> ll;
+			if (significantLines.LineMayCache(lineNumber)) {
+				ll = view.RetrieveLineLayout(lineNumber, *this);
+			} else {
+				ll = llLarge;
+				ll->ReSet(lineNumber, lengthLine);
+			}
+			view.LayoutLine(*this, surface, vs, ll.get(), wrapWidth);
+			linesAfterWrap[indexLarge] = ll->lines;
+		}
+	}
+
+	const double durationLongLines = epWrapping.Duration();
+	const size_t bytesBeingWrapped = pdoc->LineStart(lineToWrap + linesBeingWrapped) - pdoc->LineStart(lineToWrap);
+
+	size_t wrapsDone = 0;
+
+	for (size_t i = 0; i < linesBeingWrapped; i++) {
+		const Sci::Line lineNumber = lineToWrap + i;
+		int linesWrapped = linesAfterWrap[i];
+		if (vs.annotationVisible != AnnotationVisible::Hidden) {
+			linesWrapped += pdoc->AnnotationLines(lineNumber);
+		}
+		if (pcs->SetHeight(lineNumber, linesWrapped)) {
+			wrapsDone++;
+		}
+		wrapPending.Wrapped(lineNumber);
+	}
+
+	durationWrapOneByte.AddSample(bytesBeingWrapped, durationShortLinesThreads + durationLongLines);
+
+	return wrapsDone > 0;
+}
+
 // Perform  wrapping for a subset of the lines needing wrapping.
 // wsAll: wrap all lines which need wrapping in this single call
 // wsVisible: wrap currently visible lines
@@ -1586,16 +1681,7 @@ bool Editor::WrapLines(WrapScope ws) {
 			if (surface) {
 //Platform::DebugPrintf("Wraplines: scope=%0d need=%0d..%0d perform=%0d..%0d\n", ws, wrapPending.start, wrapPending.end, lineToWrap, lineToWrapEnd);
 
-				const size_t bytesBeingWrapped = pdoc->LineStart(lineToWrapEnd) - pdoc->LineStart(lineToWrap);
-				ElapsedPeriod epWrapping;
-				while (lineToWrap < lineToWrapEnd) {
-					if (WrapOneLine(surface, lineToWrap)) {
-						wrapOccurred = true;
-					}
-					wrapPending.Wrapped(lineToWrap);
-					lineToWrap++;
-				}
-				durationWrapOneByte.AddSample(bytesBeingWrapped, epWrapping.Duration());
+				wrapOccurred = WrapBlock(surface, lineToWrap, lineToWrapEnd);
 
 				goodTopLine = pcs->DisplayFromDoc(lineDocTop) + std::min(
 					subLineTop, static_cast<Sci::Line>(pcs->GetHeight(lineDocTop)-1));
@@ -1620,30 +1706,18 @@ bool Editor::WrapLines(WrapScope ws) {
 void Editor::LinesJoin() {
 	if (!RangeContainsProtected(targetRange.start.Position(), targetRange.end.Position())) {
 		UndoGroup ug(pdoc);
-		bool prevNonWS = true;
-		for (Sci::Position pos = targetRange.start.Position(); pos < targetRange.end.Position(); pos++) {
-			if (pdoc->IsPositionInLineEnd(pos)) {
-				targetRange.end.Add(-pdoc->LenChar(pos));
-				pdoc->DelChar(pos);
-				if (prevNonWS) {
-					// Ensure at least one space separating previous lines
-					const Sci::Position lengthInserted = pdoc->InsertString(pos, " ", 1);
-					targetRange.end.Add(lengthInserted);
-				}
-			} else {
-				prevNonWS = pdoc->CharAt(pos) != ' ';
+		const Sci::Line line = pdoc->SciLineFromPosition(targetRange.start.Position());
+		for (Sci::Position pos = pdoc->LineEnd(line); pos < targetRange.end.Position(); pos = pdoc->LineEnd(line)) {
+			const char chPrev = pdoc->CharAt(pos - 1);
+			const Sci::Position widthChar = pdoc->LenChar(pos);
+			targetRange.end.Add(-widthChar);
+			pdoc->DeleteChars(pos, widthChar);
+			if (chPrev != ' ') {
+				// Ensure at least one space separating previous lines
+				const Sci::Position lengthInserted = pdoc->InsertString(pos, " ", 1);
+				targetRange.end.Add(lengthInserted);
 			}
 		}
-	}
-}
-
-const char *Editor::StringFromEOLMode(EndOfLine eolMode) noexcept {
-	if (eolMode == EndOfLine::CrLf) {
-		return "\r\n";
-	} else if (eolMode == EndOfLine::Cr) {
-		return "\r";
-	} else {
-		return "\n";
 	}
 }
 
@@ -1655,7 +1729,7 @@ void Editor::LinesSplit(int pixelWidth) {
 		}
 		const Sci::Line lineStart = pdoc->SciLineFromPosition(targetRange.start.Position());
 		Sci::Line lineEnd = pdoc->SciLineFromPosition(targetRange.end.Position());
-		const char *eol = StringFromEOLMode(pdoc->eolMode);
+		const std::string_view eol = pdoc->EOLString();
 		UndoGroup ug(pdoc);
 		for (Sci::Line line = lineStart; line <= lineEnd; line++) {
 			AutoSurface surface(this);
@@ -1666,8 +1740,7 @@ void Editor::LinesSplit(int pixelWidth) {
 				Sci::Position lengthInsertedTotal = 0;
 				for (int subLine = 1; subLine < ll->lines; subLine++) {
 					const Sci::Position lengthInserted = pdoc->InsertString(
-						posLineStart + lengthInsertedTotal + ll->LineStart(subLine),
-						eol, strlen(eol));
+						posLineStart + lengthInsertedTotal + ll->LineStart(subLine), eol);
 					targetRange.end.Add(lengthInserted);
 					lengthInsertedTotal += lengthInserted;
 				}
@@ -1816,7 +1889,7 @@ void Editor::Paint(Surface *surfaceWindow, PRectangle rcArea) {
 		return;
 	}
 
-	view.PaintText(surfaceWindow, *this, rcArea, rcClient, vs);
+	view.PaintText(surfaceWindow, *this, vs, rcArea, rcClient);
 
 	if (horizontalScrollBarVisible && trackLineWidth && (view.lineWidthMaxSeen > scrollWidth)) {
 		scrollWidth = view.lineWidthMaxSeen;
@@ -1841,7 +1914,7 @@ Sci::Position Editor::FormatRange(Scintilla::Message iMessage, Scintilla::uptr_t
 	void *ptr = PtrFromSPtr(lParam);
 	if (iMessage == Message::FormatRange) {
 		RangeToFormat *pfr = static_cast<RangeToFormat *>(ptr);
-		CharacterRangeFull chrg{ pfr->chrg.cpMin,pfr->chrg.cpMax };
+		const CharacterRangeFull chrg{ pfr->chrg.cpMin,pfr->chrg.cpMax };
 		AutoSurface surface(pfr->hdc, this, Technology::Default);
 		AutoSurface surfaceMeasure(pfr->hdcTarget, this, Technology::Default);
 		if (!surface || !surfaceMeasure) {
@@ -1923,8 +1996,8 @@ Sci::Position Editor::RealizeVirtualSpace(Sci::Position position, Sci::Position 
 		if (indent == position) {
 			return pdoc->SetLineIndentation(line, pdoc->GetLineIndentation(line) + virtualSpace);
 		} else {
-			std::string spaceText(virtualSpace, ' ');
-			const Sci::Position lengthInserted = pdoc->InsertString(position, spaceText.c_str(), virtualSpace);
+			const std::string spaceText(virtualSpace, ' ');
+			const Sci::Position lengthInserted = pdoc->InsertString(position, spaceText);
 			position += lengthInserted;
 		}
 	}
@@ -1937,9 +2010,7 @@ SelectionPosition Editor::RealizeVirtualSpace(const SelectionPosition &position)
 }
 
 void Editor::AddChar(char ch) {
-	char s[2];
-	s[0] = ch;
-	s[1] = '\0';
+	const char s[1] {ch};
 	InsertCharacter(std::string_view(s, 1), CharacterSource::DirectInput);
 }
 
@@ -1993,7 +2064,7 @@ void Editor::InsertCharacter(std::string_view sv, CharacterSource charSource) {
 					}
 				}
 				positionInsert = RealizeVirtualSpace(positionInsert, currentSel->caret.VirtualSpace());
-				const Sci::Position lengthInserted = pdoc->InsertString(positionInsert, sv.data(), sv.length());
+				const Sci::Position lengthInserted = pdoc->InsertString(positionInsert, sv);
 				if (lengthInserted > 0) {
 					currentSel->caret.SetPosition(positionInsert + lengthInserted);
 					currentSel->anchor.SetPosition(positionInsert + lengthInserted);
@@ -2122,14 +2193,12 @@ void Editor::InsertPasteShape(const char *text, Sci::Position len, PasteShape sh
 		PasteRectangular(sel.Start(), text, len);
 	} else {
 		if (shape == PasteShape::line) {
-			const Sci::Position insertPos =
-				pdoc->LineStart(pdoc->LineFromPosition(sel.MainCaret()));
+			const Sci::Position insertPos = pdoc->LineStartPosition(sel.MainCaret());
 			Sci::Position lengthInserted = pdoc->InsertString(insertPos, text, len);
 			// add the newline if necessary
 			if ((len > 0) && (text[len - 1] != '\n' && text[len - 1] != '\r')) {
-				const char *endline = StringFromEOLMode(pdoc->eolMode);
-				const Sci::Position length = strlen(endline);
-				lengthInserted += pdoc->InsertString(insertPos + lengthInserted, endline, length);
+				const std::string_view endline = pdoc->EOLString();
+				lengthInserted += pdoc->InsertString(insertPos + lengthInserted, endline);
 			}
 			if (sel.MainCaret() == insertPos) {
 				SetEmptySelection(sel.MainCaret() + lengthInserted);
@@ -2223,10 +2292,8 @@ void Editor::PasteRectangular(SelectionPosition pos, const char *ptr, Sci::Posit
 			if ((ptr[i] == '\r') || (!prevCr))
 				line++;
 			if (line >= pdoc->LinesTotal()) {
-				if (pdoc->eolMode != EndOfLine::Lf)
-					pdoc->InsertString(pdoc->Length(), "\r", 1);
-				if (pdoc->eolMode != EndOfLine::Cr)
-					pdoc->InsertString(pdoc->Length(), "\n", 1);
+				const std::string_view eol = pdoc->EOLString();
+				pdoc->InsertString(pdoc->LengthNoExcept(), eol);
 			}
 			// Pad the end of lines with spaces if required
 			sel.RangeMain().caret.SetPosition(PositionFromLineX(line, xInsert));
@@ -2356,15 +2423,6 @@ void Editor::DelCharBack(bool allowLineStartDeletion) {
 	ShowCaretAtCurrentPosition();
 }
 
-KeyMod Editor::ModifierFlags(bool shift, bool ctrl, bool alt, bool meta, bool super) noexcept {
-	return
-		(shift ? KeyMod::Shift : KeyMod::Norm) |
-		(ctrl ? KeyMod::Ctrl : KeyMod::Norm) |
-		(alt ? KeyMod::Alt : KeyMod::Norm) |
-		(meta ? KeyMod::Meta : KeyMod::Norm) |
-		(super ? KeyMod::Super : KeyMod::Norm);
-}
-
 void Editor::NotifyFocus(bool focus) {
 	NotificationData scn = {};
 	scn.nmhdr.code = focus ? Notification::FocusIn : Notification::FocusOut;
@@ -2386,9 +2444,6 @@ void Editor::NotifyStyleNeeded(Document *, void *, Sci::Position endStyleNeeded)
 	NotifyStyleToNeeded(endStyleNeeded);
 }
 
-void Editor::NotifyLexerChanged(Document *, void *) {
-}
-
 void Editor::NotifyErrorOccurred(Document *, void *, Status status) {
 	errorStatus = status;
 }
@@ -2405,6 +2460,9 @@ void Editor::NotifySavePoint(bool isSavePoint) {
 	NotificationData scn = {};
 	if (isSavePoint) {
 		scn.nmhdr.code = Notification::SavePointReached;
+		if (changeHistoryOption != ChangeHistoryOption::Disabled) {
+			Redraw();
+		}
 	} else {
 		scn.nmhdr.code = Notification::SavePointLeft;
 	}
@@ -2733,6 +2791,9 @@ void Editor::NotifyModified(Document *, DocModification mh, void *) {
 					QueueIdleWork(WorkItems::style, mh.position + mh.length);
 				}
 				InvalidateRange(mh.position, mh.position + mh.length);
+				if (FlagSet(changeHistoryOption, ChangeHistoryOption::Markers)) {
+					RedrawSelMargin(pdoc->SciLineFromPosition(mh.position));
+				}
 			}
 		}
 	}
@@ -3034,10 +3095,8 @@ void Editor::LineTranspose() {
 		pdoc->DeleteChars(startPrevious, linePrevious.length());
 		startCurrent -= linePrevious.length();
 
-		startCurrent += pdoc->InsertString(startPrevious, lineCurrent.c_str(),
-			lineCurrent.length());
-		pdoc->InsertString(startCurrent, linePrevious.c_str(),
-			linePrevious.length());
+		startCurrent += pdoc->InsertString(startPrevious, lineCurrent);
+		pdoc->InsertString(startCurrent, linePrevious);
 		// Move caret to start of current line
 		MovePositionTo(SelectionPosition(startCurrent));
 	}
@@ -3064,8 +3123,8 @@ void Editor::LineReverse() {
 		pdoc->DeleteChars(lineStart2, lineLen2);
 		pdoc->DeleteChars(lineStart1, lineLen1);
 		lineStart2 -= lineLen1;
-		pdoc->InsertString(lineStart2, line1.c_str(), lineLen1);
-		pdoc->InsertString(lineStart1, line2.c_str(), lineLen2);
+		pdoc->InsertString(lineStart2, line1);
+		pdoc->InsertString(lineStart1, line2);
 	}
 	// Wholly select all affected lines
 	sel.RangeMain() = SelectionRange(pdoc->LineStart(lineStart),
@@ -3077,11 +3136,9 @@ void Editor::Duplicate(bool forLine) {
 		forLine = true;
 	}
 	UndoGroup ug(pdoc);
-	const char *eol = "";
-	Sci::Position eolLen = 0;
+	std::string_view eol;
 	if (forLine) {
-		eol = StringFromEOLMode(pdoc->eolMode);
-		eolLen = strlen(eol);
+		eol = pdoc->EOLString();
 	}
 	for (size_t r=0; r<sel.Count(); r++) {
 		SelectionPosition start = sel.Range(r).Start();
@@ -3092,10 +3149,10 @@ void Editor::Duplicate(bool forLine) {
 			end = SelectionPosition(pdoc->LineEnd(line));
 		}
 		std::string text = RangeText(start.Position(), end.Position());
-		Sci::Position lengthInserted = eolLen;
+		Sci::Position lengthInserted = 0;
 		if (forLine)
-			lengthInserted = pdoc->InsertString(end.Position(), eol, eolLen);
-		pdoc->InsertString(end.Position() + lengthInserted, text.c_str(), text.length());
+			lengthInserted = pdoc->InsertString(end.Position(), eol);
+		pdoc->InsertString(end.Position() + lengthInserted, text);
 	}
 	if (sel.Count() && sel.IsRectangular()) {
 		SelectionPosition last = sel.Last();
@@ -3132,11 +3189,11 @@ void Editor::NewLine() {
 
 	// Insert each line end
 	size_t countInsertions = 0;
+	const std::string_view eol = pdoc->EOLString();
 	for (size_t r = 0; r < sel.Count(); r++) {
 		sel.Range(r).ClearVirtualSpace();
-		const char *eol = StringFromEOLMode(pdoc->eolMode);
 		const Sci::Position positionInsert = sel.Range(r).caret.Position();
-		const Sci::Position insertLength = pdoc->InsertString(positionInsert, eol, strlen(eol));
+		const Sci::Position insertLength = pdoc->InsertString(positionInsert, eol);
 		if (insertLength > 0) {
 			sel.Range(r) = SelectionRange(positionInsert + insertLength);
 			countInsertions++;
@@ -3146,16 +3203,12 @@ void Editor::NewLine() {
 	// Perform notifications after all the changes as the application may change the
 	// selections in response to the characters.
 	for (size_t i = 0; i < countInsertions; i++) {
-		const char *eol = StringFromEOLMode(pdoc->eolMode);
-		while (*eol) {
-			NotifyChar(*eol, CharacterSource::DirectInput);
+		for (const char ch : eol) {
+			NotifyChar(ch, CharacterSource::DirectInput);
 			if (recordingMacro) {
-				char txt[2];
-				txt[0] = *eol;
-				txt[1] = '\0';
+				const char txt[2] = { ch, '\0' };
 				NotifyMacroRecord(Message::ReplaceSel, 0, reinterpret_cast<sptr_t>(txt));
 			}
-			eol++;
 		}
 	}
 
@@ -3218,7 +3271,7 @@ void Editor::CursorUpOrDown(int direction, Selection::SelTypes selt) {
 	if ((selt == Selection::SelTypes::none) && sel.MoveExtends()) {
 		selt = !sel.IsRectangular() ? Selection::SelTypes::stream : Selection::SelTypes::rectangle;
 	}
-	SelectionPosition caretToUse = sel.Range(sel.Main()).caret;
+	SelectionPosition caretToUse = sel.RangeMain().caret;
 	if (sel.IsRectangular()) {
 		if (selt ==  Selection::SelTypes::none) {
 			caretToUse = (direction > 0) ? sel.Limits().end : sel.Limits().start;
@@ -3242,7 +3295,7 @@ void Editor::CursorUpOrDown(int direction, Selection::SelTypes selt) {
 		// Calculate new caret position and call SetSelection(), which will ensure whole lines are selected.
 		const SelectionPosition posNew = MovePositionSoVisible(
 			PositionUpOrDown(caretToUse, direction, -1), direction);
-		SetSelection(posNew, sel.Range(sel.Main()).anchor);
+		SetSelection(posNew, sel.RangeMain().anchor);
 	} else {
 		InvalidateWholeSelection();
 		if (!additionalSelectionTyping || (sel.IsRectangular())) {
@@ -3392,6 +3445,14 @@ constexpr bool IsRectExtend(Message iMessage, bool isRectMoveExtends) noexcept {
 
 }
 
+Sci::Position Editor::HomeWrapPosition(Sci::Position position) {
+	const Sci::Position viewLineStart = StartEndDisplayLine(position, true);
+	const Sci::Position homePos = MovePositionSoVisible(viewLineStart, -1).Position();
+	if (position <= homePos)
+		return pdoc->LineStartPosition(position);
+	return homePos;
+}
+
 Sci::Position Editor::VCHomeDisplayPosition(Sci::Position position) {
 	const Sci::Position homePos = pdoc->VCHomePosition(position);
 	const Sci::Position viewLineStart = StartEndDisplayLine(position, true);
@@ -3418,6 +3479,125 @@ Sci::Position Editor::LineEndWrapPosition(Sci::Position position) {
 		return realEndPos;
 	else
 		return endPos;
+}
+
+SelectionPosition Editor::PositionMove(Message iMessage, SelectionPosition spCaret) {
+	switch (iMessage) {
+	case Message::CharLeft:
+	case Message::CharLeftExtend:
+		if (spCaret.VirtualSpace()) {
+			spCaret.AddVirtualSpace(-1);
+		} else if (!FlagSet(virtualSpaceOptions, VirtualSpace::NoWrapLineStart) || pdoc->GetColumn(spCaret.Position()) > 0) {
+			spCaret.Add(-1);
+		}
+		return spCaret;
+	case Message::CharRight:
+	case Message::CharRightExtend:
+		if (FlagSet(virtualSpaceOptions, VirtualSpace::UserAccessible) && pdoc->IsLineEndPosition(spCaret.Position())) {
+			spCaret.AddVirtualSpace(1);
+		} else {
+			spCaret.Add(1);
+		}
+		return spCaret;
+	case Message::WordLeft:
+	case Message::WordLeftExtend:
+		return SelectionPosition(pdoc->NextWordStart(spCaret.Position(), -1));
+	case Message::WordRight:
+	case Message::WordRightExtend:
+		return SelectionPosition(pdoc->NextWordStart(spCaret.Position(), 1));
+	case Message::WordLeftEnd:
+	case Message::WordLeftEndExtend:
+		return SelectionPosition(pdoc->NextWordEnd(spCaret.Position(), -1));
+	case Message::WordRightEnd:
+	case Message::WordRightEndExtend:
+		return SelectionPosition(pdoc->NextWordEnd(spCaret.Position(), 1));
+	case Message::WordPartLeft:
+	case Message::WordPartLeftExtend:
+		return SelectionPosition(pdoc->WordPartLeft(spCaret.Position()));
+	case Message::WordPartRight:
+	case Message::WordPartRightExtend:
+		return SelectionPosition(pdoc->WordPartRight(spCaret.Position()));
+	case Message::Home:
+	case Message::HomeExtend:
+		return SelectionPosition(pdoc->LineStartPosition(spCaret.Position()));
+	case Message::HomeDisplay:
+	case Message::HomeDisplayExtend:
+		return SelectionPosition(StartEndDisplayLine(spCaret.Position(), true));
+	case Message::HomeWrap:
+	case Message::HomeWrapExtend:
+		return SelectionPosition(HomeWrapPosition(spCaret.Position()));
+	case Message::VCHome:
+	case Message::VCHomeExtend:
+		// VCHome alternates between beginning of line and beginning of text so may move back or forwards
+		return SelectionPosition(pdoc->VCHomePosition(spCaret.Position()));
+	case Message::VCHomeDisplay:
+	case Message::VCHomeDisplayExtend:
+		return SelectionPosition(VCHomeDisplayPosition(spCaret.Position()));
+	case Message::VCHomeWrap:
+	case Message::VCHomeWrapExtend:
+		return SelectionPosition(VCHomeWrapPosition(spCaret.Position()));
+	case Message::LineEnd:
+	case Message::LineEndExtend:
+		return SelectionPosition(pdoc->LineEndPosition(spCaret.Position()));
+	case Message::LineEndDisplay:
+	case Message::LineEndDisplayExtend:
+		return SelectionPosition(StartEndDisplayLine(spCaret.Position(), false));
+	case Message::LineEndWrap:
+	case Message::LineEndWrapExtend:
+		return SelectionPosition(LineEndWrapPosition(spCaret.Position()));
+
+	default:
+		break;
+	}
+	// Above switch should be exhaustive so this will never be reached.
+	PLATFORM_ASSERT(false);
+	return spCaret;
+}
+
+SelectionRange Editor::SelectionMove(Scintilla::Message iMessage, size_t r) {
+	const SelectionPosition spCaretStart = sel.Range(r).caret;
+	const SelectionPosition spCaretMoved = PositionMove(iMessage, spCaretStart);
+
+	const int directionMove = (spCaretMoved < spCaretStart) ? -1 : 1;
+	const SelectionPosition spCaret = MovePositionSoVisible(spCaretMoved, directionMove);
+
+	// Handle move versus extend, and special behaviour for non-empty left/right
+	switch (iMessage) {
+	case Message::CharLeft:
+	case Message::CharRight:
+		if (sel.Range(r).Empty()) {
+			return SelectionRange(spCaret);
+		}
+		if (iMessage == Message::CharLeft) {
+			return SelectionRange(sel.Range(r).Start());
+		}
+		return SelectionRange(sel.Range(r).End());
+
+	case Message::WordLeft:
+	case Message::WordRight:
+	case Message::WordLeftEnd:
+	case Message::WordRightEnd:
+	case Message::WordPartLeft:
+	case Message::WordPartRight:
+	case Message::Home:
+	case Message::HomeDisplay:
+	case Message::HomeWrap:
+	case Message::VCHome:
+	case Message::VCHomeDisplay:
+	case Message::VCHomeWrap:
+	case Message::LineEnd:
+	case Message::LineEndDisplay:
+	case Message::LineEndWrap:
+		return SelectionRange(spCaret);
+
+	default:
+		break;
+	}
+
+	// All remaining cases are *Extend
+	const SelectionRange rangeNew = SelectionRange(spCaret, sel.Range(r).anchor);
+	sel.TrimOtherSelections(r, rangeNew);
+	return rangeNew;
 }
 
 int Editor::HorizontalMove(Message iMessage) {
@@ -3462,8 +3642,7 @@ int Editor::HorizontalMove(Message iMessage) {
 			break;
 		case Message::HomeRectExtend:
 		case Message::HomeExtend: // only when sel.IsRectangular() && sel.MoveExtends()
-			spCaret = SelectionPosition(
-				pdoc->LineStart(pdoc->LineFromPosition(spCaret.Position())));
+			spCaret = SelectionPosition(pdoc->LineStartPosition(spCaret.Position()));
 			break;
 		case Message::VCHomeRectExtend:
 		case Message::VCHomeExtend: // only when sel.IsRectangular() && sel.MoveExtends()
@@ -3486,8 +3665,7 @@ int Editor::HorizontalMove(Message iMessage) {
 		SelectionPosition selAtLimit = (NaturalDirection(iMessage) > 0) ? sel.Limits().end : sel.Limits().start;
 		switch (iMessage) {
 		case Message::Home:
-			selAtLimit = SelectionPosition(
-				pdoc->LineStart(pdoc->LineFromPosition(selAtLimit.Position())));
+			selAtLimit = SelectionPosition(pdoc->LineStartPosition(selAtLimit.Position()));
 			break;
 		case Message::VCHome:
 			selAtLimit = SelectionPosition(pdoc->VCHomePosition(selAtLimit.Position()));
@@ -3506,154 +3684,7 @@ int Editor::HorizontalMove(Message iMessage) {
 			sel.DropAdditionalRanges();
 		}
 		for (size_t r = 0; r < sel.Count(); r++) {
-			const SelectionPosition spCaretNow = sel.Range(r).caret;
-			SelectionPosition spCaret = spCaretNow;
-			switch (iMessage) {
-			case Message::CharLeft:
-			case Message::CharLeftExtend:
-				if (spCaret.VirtualSpace()) {
-					spCaret.SetVirtualSpace(spCaret.VirtualSpace() - 1);
-				} else if (!FlagSet(virtualSpaceOptions, VirtualSpace::NoWrapLineStart) || pdoc->GetColumn(spCaret.Position()) > 0) {
-					spCaret = SelectionPosition(spCaret.Position() - 1);
-				}
-				break;
-			case Message::CharRight:
-			case Message::CharRightExtend:
-				if (FlagSet(virtualSpaceOptions, VirtualSpace::UserAccessible) && pdoc->IsLineEndPosition(spCaret.Position())) {
-					spCaret.SetVirtualSpace(spCaret.VirtualSpace() + 1);
-				} else {
-					spCaret = SelectionPosition(spCaret.Position() + 1);
-				}
-				break;
-			case Message::WordLeft:
-			case Message::WordLeftExtend:
-				spCaret = SelectionPosition(pdoc->NextWordStart(spCaret.Position(), -1));
-				break;
-			case Message::WordRight:
-			case Message::WordRightExtend:
-				spCaret = SelectionPosition(pdoc->NextWordStart(spCaret.Position(), 1));
-				break;
-			case Message::WordLeftEnd:
-			case Message::WordLeftEndExtend:
-				spCaret = SelectionPosition(pdoc->NextWordEnd(spCaret.Position(), -1));
-				break;
-			case Message::WordRightEnd:
-			case Message::WordRightEndExtend:
-				spCaret = SelectionPosition(pdoc->NextWordEnd(spCaret.Position(), 1));
-				break;
-			case Message::WordPartLeft:
-			case Message::WordPartLeftExtend:
-				spCaret = SelectionPosition(pdoc->WordPartLeft(spCaret.Position()));
-				break;
-			case Message::WordPartRight:
-			case Message::WordPartRightExtend:
-				spCaret = SelectionPosition(pdoc->WordPartRight(spCaret.Position()));
-				break;
-			case Message::Home:
-			case Message::HomeExtend:
-				spCaret = SelectionPosition(
-					pdoc->LineStart(pdoc->LineFromPosition(spCaret.Position())));
-				break;
-			case Message::HomeDisplay:
-			case Message::HomeDisplayExtend:
-				spCaret = SelectionPosition(StartEndDisplayLine(spCaret.Position(), true));
-				break;
-			case Message::HomeWrap:
-			case Message::HomeWrapExtend:
-				spCaret = MovePositionSoVisible(StartEndDisplayLine(spCaret.Position(), true), -1);
-				if (spCaretNow <= spCaret)
-					spCaret = SelectionPosition(
-						pdoc->LineStart(pdoc->LineFromPosition(spCaret.Position())));
-				break;
-			case Message::VCHome:
-			case Message::VCHomeExtend:
-				// VCHome alternates between beginning of line and beginning of text so may move back or forwards
-				spCaret = SelectionPosition(pdoc->VCHomePosition(spCaret.Position()));
-				break;
-			case Message::VCHomeDisplay:
-			case Message::VCHomeDisplayExtend:
-				spCaret = SelectionPosition(VCHomeDisplayPosition(spCaret.Position()));
-				break;
-			case Message::VCHomeWrap:
-			case Message::VCHomeWrapExtend:
-				spCaret = SelectionPosition(VCHomeWrapPosition(spCaret.Position()));
-				break;
-			case Message::LineEnd:
-			case Message::LineEndExtend:
-				spCaret = SelectionPosition(pdoc->LineEndPosition(spCaret.Position()));
-				break;
-			case Message::LineEndDisplay:
-			case Message::LineEndDisplayExtend:
-				spCaret = SelectionPosition(StartEndDisplayLine(spCaret.Position(), false));
-				break;
-			case Message::LineEndWrap:
-			case Message::LineEndWrapExtend:
-				spCaret = SelectionPosition(LineEndWrapPosition(spCaret.Position()));
-				break;
-
-			default:
-				PLATFORM_ASSERT(false);
-			}
-
-			const int directionMove = (spCaret < spCaretNow) ? -1 : 1;
-			spCaret = MovePositionSoVisible(spCaret, directionMove);
-
-			// Handle move versus extend, and special behaviour for non-empty left/right
-			switch (iMessage) {
-			case Message::CharLeft:
-			case Message::CharRight:
-				if (sel.Range(r).Empty()) {
-					sel.Range(r) = SelectionRange(spCaret);
-				} else {
-					sel.Range(r) = SelectionRange(
-						(iMessage == Message::CharLeft) ? sel.Range(r).Start() : sel.Range(r).End());
-				}
-				break;
-
-			case Message::WordLeft:
-			case Message::WordRight:
-			case Message::WordLeftEnd:
-			case Message::WordRightEnd:
-			case Message::WordPartLeft:
-			case Message::WordPartRight:
-			case Message::Home:
-			case Message::HomeDisplay:
-			case Message::HomeWrap:
-			case Message::VCHome:
-			case Message::VCHomeDisplay:
-			case Message::VCHomeWrap:
-			case Message::LineEnd:
-			case Message::LineEndDisplay:
-			case Message::LineEndWrap:
-				sel.Range(r) = SelectionRange(spCaret);
-				break;
-
-			case Message::CharLeftExtend:
-			case Message::CharRightExtend:
-			case Message::WordLeftExtend:
-			case Message::WordRightExtend:
-			case Message::WordLeftEndExtend:
-			case Message::WordRightEndExtend:
-			case Message::WordPartLeftExtend:
-			case Message::WordPartRightExtend:
-			case Message::HomeExtend:
-			case Message::HomeDisplayExtend:
-			case Message::HomeWrapExtend:
-			case Message::VCHomeExtend:
-			case Message::VCHomeDisplayExtend:
-			case Message::VCHomeWrapExtend:
-			case Message::LineEndExtend:
-			case Message::LineEndDisplayExtend:
-			case Message::LineEndWrapExtend: {
-				SelectionRange rangeNew = SelectionRange(spCaret, sel.Range(r).anchor);
-				sel.TrimOtherSelections(r, SelectionRange(rangeNew));
-				sel.Range(r) = rangeNew;
-				}
-				break;
-
-			default:
-				PLATFORM_ASSERT(false);
-			}
+			sel.Range(r) = SelectionMove(iMessage, r);
 		}
 	}
 
@@ -3713,7 +3744,7 @@ int Editor::DelWordOrLine(Message iMessage) {
 			break;
 		case Message::DelLineLeft:
 			rangeDelete = Range(
-				pdoc->LineStart(pdoc->LineFromPosition(sel.Range(r).caret.Position())),
+				pdoc->LineStartPosition(sel.Range(r).caret.Position()),
 				sel.Range(r).caret.Position());
 			break;
 		case Message::DelLineRight:
@@ -4042,8 +4073,7 @@ void Editor::Indent(bool forwards) {
 						if (numSpaces < 1)
 							numSpaces = pdoc->tabInChars;
 						const std::string spaceText(numSpaces, ' ');
-						const Sci::Position lengthInserted = pdoc->InsertString(caretPosition, spaceText.c_str(),
-							spaceText.length());
+						const Sci::Position lengthInserted = pdoc->InsertString(caretPosition, spaceText);
 						sel.Range(r) = SelectionRange(caretPosition + lengthInserted);
 					}
 				}
@@ -4147,14 +4177,14 @@ Sci::Position Editor::FindTextFull(
 		pdoc->SetCaseFolder(CaseFolderForEncoding());
 	try {
 		const Sci::Position pos = pdoc->FindText(
-			static_cast<Sci::Position>(ft->chrg.cpMin),
-			static_cast<Sci::Position>(ft->chrg.cpMax),
+			ft->chrg.cpMin,
+			ft->chrg.cpMax,
 			ft->lpstrText,
 			static_cast<FindOption>(wParam),
 			&lengthFound);
 		if (pos != -1) {
-			ft->chrgText.cpMin = static_cast<Sci_PositionCR>(pos);
-			ft->chrgText.cpMax = static_cast<Sci_PositionCR>(pos + lengthFound);
+			ft->chrgText.cpMin = pos;
+			ft->chrgText.cpMax = pos + lengthFound;
 		}
 		return pos;
 	} catch (RegexError &) {
@@ -4174,7 +4204,7 @@ Sci::Position Editor::FindTextFull(
  * while still setting the selection to found text so the find/select
  * operation is self-contained.
  */
-void Editor::SearchAnchor() {
+void Editor::SearchAnchor() noexcept {
 	searchAnchor = SelectionStart().Position();
 }
 
@@ -4427,7 +4457,7 @@ void Editor::DropAt(SelectionPosition position, const char *value, size_t length
 			position = MovePositionOutsideChar(position, sel.MainCaret() - position.Position());
 			position = RealizeVirtualSpace(position);
 			const Sci::Position lengthInserted = pdoc->InsertString(
-				position.Position(), convertedText.c_str(), convertedText.length());
+				position.Position(), convertedText);
 			if (lengthInserted > 0) {
 				SelectionPosition posAfterInsertion = position;
 				posAfterInsertion.Add(lengthInserted);
@@ -4556,7 +4586,7 @@ void Editor::WordSelection(Sci::Position pos) {
 		// Extend forward to the word containing the character to the left of pos.
 		// Skip ExtendWordSelect if the line is empty or if pos is the first position on the line.
 		// This ensures that a series of empty lines isn't counted as a single "word".
-		if (pos > pdoc->LineStart(pdoc->LineFromPosition(pos)))
+		if (pos > pdoc->LineStartPosition(pos))
 			pos = pdoc->ExtendWordSelect(pdoc->MovePositionOutsideChar(pos - 1, -1), 1);
 		TrimAndSetSelection(pos, wordSelectAnchorStartPos);
 	} else {
@@ -4670,7 +4700,7 @@ void Editor::ButtonDownWithModifiers(Point pt, unsigned int curTime, KeyMod modi
 			} else {
 				// Selecting backwards, or anchor beyond last character on line. In these cases,
 				// we select the word containing the character to the *left* of the anchor.
-				if (charPos > pdoc->LineStart(pdoc->LineFromPosition(charPos))) {
+				if (charPos > pdoc->LineStartPosition(charPos)) {
 					startWord = pdoc->ExtendWordSelect(charPos, -1);
 					endWord = pdoc->ExtendWordSelect(startWord, 1);
 				} else {
@@ -4780,7 +4810,7 @@ void Editor::RightButtonDownWithModifiers(Point pt, unsigned int, KeyMod modifie
 		return;
 }
 
-bool Editor::PositionIsHotspot(Sci::Position position) const {
+bool Editor::PositionIsHotspot(Sci::Position position) const noexcept {
 	return vs.styles[pdoc->StyleIndexAt(position)].hotspot;
 }
 
@@ -5267,7 +5297,7 @@ bool Editor::PaintContains(PRectangle rc) {
 }
 
 bool Editor::PaintContainsMargin() {
-	if (wMargin.GetID()) {
+	if (HasMarginWindow()) {
 		// With separate margin view, paint of text view
 		// never contains margin.
 		return false;
@@ -5414,17 +5444,22 @@ void Editor::SetEOLAnnotationVisible(EOLAnnotationVisible visible) {
 Sci::Line Editor::ExpandLine(Sci::Line line) {
 	const Sci::Line lineMaxSubord = pdoc->GetLastChild(line);
 	line++;
+	Sci::Line lineStart = line;
 	while (line <= lineMaxSubord) {
-		pcs->SetVisible(line, line, true);
 		const FoldLevel level = pdoc->GetFoldLevel(line);
 		if (LevelIsHeader(level)) {
+			pcs->SetVisible(lineStart, line, true);
 			if (pcs->GetExpanded(line)) {
 				line = ExpandLine(line);
 			} else {
 				line = pdoc->GetLastChild(line);
 			}
+			lineStart = line + 1;
 		}
 		line++;
+	}
+	if (lineStart <= lineMaxSubord) {
+		pcs->SetVisible(lineStart, lineMaxSubord, true);
 	}
 	return lineMaxSubord;
 }
@@ -5573,35 +5608,40 @@ void Editor::EnsureLineVisible(Sci::Line lineDoc, bool enforcePolicy) {
 
 void Editor::FoldAll(FoldAction action) {
 	const Sci::Line maxLine = pdoc->LinesTotal();
+	const bool contractAll = FlagSet(action, FoldAction::ContractEveryLevel);
+	action = static_cast<FoldAction>(static_cast<int>(action) & ~static_cast<int>(FoldAction::ContractEveryLevel));
 	bool expanding = action == FoldAction::Expand;
 	if (!expanding) {
 		pdoc->EnsureStyledTo(pdoc->Length());
 	}
+	Sci::Line line = 0;
 	if (action == FoldAction::Toggle) {
 		// Discover current state
-		for (Sci::Line lineSeek = 0; lineSeek < maxLine; lineSeek++) {
-			if (LevelIsHeader(pdoc->GetFoldLevel(lineSeek))) {
-				expanding = !pcs->GetExpanded(lineSeek);
+		for (; line < maxLine; line++) {
+			if (LevelIsHeader(pdoc->GetFoldLevel(line))) {
+				expanding = !pcs->GetExpanded(line);
 				break;
 			}
 		}
 	}
 	if (expanding) {
 		pcs->SetVisible(0, maxLine-1, true);
-		for (Sci::Line line = 0; line < maxLine; line++) {
-			if (!pcs->GetExpanded(line)) {
-				SetFoldExpanded(line, true);
-			}
-		}
+		pcs->ExpandAll();
 	} else {
-		for (Sci::Line line = 0; line < maxLine; line++) {
+		for (; line < maxLine; line++) {
 			const FoldLevel level = pdoc->GetFoldLevel(line);
-			if (LevelIsHeader(level) &&
-					(FoldLevel::Base == LevelNumberPart(level))) {
-				SetFoldExpanded(line, false);
-				const Sci::Line lineMaxSubord = pdoc->GetLastChild(line);
-				if (lineMaxSubord > line) {
-					pcs->SetVisible(line + 1, lineMaxSubord, false);
+			if (LevelIsHeader(level)) {
+				if (FoldLevel::Base == LevelNumberPart(level)) {
+					SetFoldExpanded(line, false);
+					const Sci::Line lineMaxSubord = pdoc->GetLastChild(line);
+					if (lineMaxSubord > line) {
+						pcs->SetVisible(line + 1, lineMaxSubord, false);
+						if (!contractAll) {
+							line = lineMaxSubord;
+						}
+					}
+				} else if (contractAll) {
+					SetFoldExpanded(line, false);
 				}
 			}
 		}
@@ -5690,15 +5730,27 @@ Sci::Position Editor::GetTag(char *tagValue, int tagNumber) {
 	return length;
 }
 
-Sci::Position Editor::ReplaceTarget(bool replacePatterns, const char *text, Sci::Position length) {
+Sci::Position Editor::ReplaceTarget(ReplaceType replaceType, std::string_view text) {
 	UndoGroup ug(pdoc);
-	if (length == -1)
-		length = strlen(text);
-	if (replacePatterns) {
-		text = pdoc->SubstituteByPosition(text, &length);
-		if (!text) {
+	if (replaceType == ReplaceType::patterns) {
+		Sci::Position length = text.length();
+		const char *p = pdoc->SubstituteByPosition(text.data(), &length);
+		if (!p) {
 			return 0;
 		}
+		text = std::string_view(p, length);
+	}
+
+	if (replaceType == ReplaceType::minimal) {
+		// Check for prefix and suffix and reduce text and target to match.
+		// This is performed with Range which doesn't support virtual space.
+		Range range(targetRange.start.Position(), targetRange.end.Position());
+		pdoc->TrimReplacement(text, range);
+		// Re-apply virtual space to start if start position didn't change.
+		// Don't bother with end as its virtual space is not used
+		const SelectionPosition start(range.start == targetRange.start.Position() ?
+			targetRange.start : SelectionPosition(range.start));
+		targetRange = SelectionSegment(start, SelectionPosition(range.end));
 	}
 
 	// Remove the text inside the range
@@ -5712,9 +5764,9 @@ Sci::Position Editor::ReplaceTarget(bool replacePatterns, const char *text, Sci:
 	targetRange.end = targetRange.start;
 
 	// Insert the new text
-	const Sci::Position lengthInserted = pdoc->InsertString(targetRange.start.Position(), text, length);
+	const Sci::Position lengthInserted = pdoc->InsertString(targetRange.start.Position(), text);
 	targetRange.end.SetPosition(targetRange.start.Position() + lengthInserted);
-	return length;
+	return text.length();
 }
 
 bool Editor::IsUnicodeMode() const noexcept {
@@ -5764,17 +5816,37 @@ void Editor::AddStyledText(const char *buffer, Sci::Position appendLength) {
 	// The buffer consists of alternating character bytes and style bytes
 	const Sci::Position textLength = appendLength / 2;
 	std::string text(textLength, '\0');
-	Sci::Position i;
-	for (i = 0; i < textLength; i++) {
+	for (Sci::Position i = 0; i < textLength; i++) {
 		text[i] = buffer[i*2];
 	}
-	const Sci::Position lengthInserted = pdoc->InsertString(CurrentPosition(), text.c_str(), textLength);
-	for (i = 0; i < textLength; i++) {
+	const Sci::Position lengthInserted = pdoc->InsertString(CurrentPosition(), text);
+	for (Sci::Position i = 0; i < textLength; i++) {
 		text[i] = buffer[i*2+1];
 	}
 	pdoc->StartStyling(CurrentPosition());
 	pdoc->SetStyles(textLength, text.c_str());
 	SetEmptySelection(sel.MainCaret() + lengthInserted);
+}
+
+Sci::Position Editor::GetStyledText(char *buffer, Sci::Position cpMin, Sci::Position cpMax) const noexcept {
+	Sci::Position iPlace = 0;
+	for (Sci::Position iChar = cpMin; iChar < cpMax; iChar++) {
+		buffer[iPlace++] = pdoc->CharAt(iChar);
+		buffer[iPlace++] = pdoc->StyleAtNoExcept(iChar);
+	}
+	buffer[iPlace] = '\0';
+	buffer[iPlace + 1] = '\0';
+	return iPlace;
+}
+
+Sci::Position Editor::GetTextRange(char *buffer, Sci::Position cpMin, Sci::Position cpMax) const {
+	const Sci::Position cpEnd = (cpMax == -1) ? pdoc->Length() : cpMax;
+	PLATFORM_ASSERT(cpEnd <= pdoc->Length());
+	const Sci::Position len = cpEnd - cpMin; 	// No -1 as cpMin and cpMax are referring to inter character positions
+	pdoc->GetCharRange(buffer, cpMin, len);
+	// Spec says copied text is terminated with a NUL
+	buffer[len] = '\0';
+	return len; 	// Not including NUL
 }
 
 bool Editor::ValidMargin(uptr_t wParam) const noexcept {
@@ -5826,6 +5898,19 @@ void Editor::StyleSetMessage(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::StyleSetVisible:
 		vs.styles[wParam].visible = lParam != 0;
 		break;
+	case Message::StyleSetInvisibleRepresentation: {
+		const char *utf8 = ConstCharPtrFromSPtr(lParam);
+		char *rep = vs.styles[wParam].invisibleRepresentation;
+		const int classified = UTF8Classify(utf8);
+		if (!(classified & UTF8MaskInvalid)) {
+			// valid UTF-8
+			const int len = classified & UTF8MaskWidth;
+			for (int i=0; i<len && i<UTF8MaxBytes; i++)
+				*rep++ = *utf8++;
+		}
+		*rep = 0;
+		break;
+	}
 	case Message::StyleSetChangeable:
 		vs.styles[wParam].changeable = lParam != 0;
 		break;
@@ -5872,6 +5957,8 @@ sptr_t Editor::StyleGetMessage(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		return vs.styles[wParam].visible ? 1 : 0;
 	case Message::StyleGetChangeable:
 		return vs.styles[wParam].changeable ? 1 : 0;
+	case Message::StyleGetInvisibleRepresentation:
+		return StringResult(lParam, vs.styles[wParam].invisibleRepresentation);
 	case Message::StyleGetHotSpot:
 		return vs.styles[wParam].hotspot ? 1 : 0;
 	case Message::StyleGetCheckMonospaced:
@@ -6198,11 +6285,15 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case Message::ReplaceTarget:
 		PLATFORM_ASSERT(lParam);
-		return ReplaceTarget(false, ConstCharPtrFromSPtr(lParam), PositionFromUPtr(wParam));
+		return ReplaceTarget(ReplaceType::basic, ViewFromParams(lParam, wParam));
 
 	case Message::ReplaceTargetRE:
 		PLATFORM_ASSERT(lParam);
-		return ReplaceTarget(true, ConstCharPtrFromSPtr(lParam), PositionFromUPtr(wParam));
+		return ReplaceTarget(ReplaceType::patterns, ViewFromParams(lParam, wParam));
+
+	case Message::ReplaceTargetMinimal:
+		PLATFORM_ASSERT(lParam);
+		return ReplaceTarget(ReplaceType::minimal, ViewFromParams(lParam, wParam));
 
 	case Message::SearchInTarget:
 		PLATFORM_ASSERT(lParam);
@@ -6236,7 +6327,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case Message::LineScroll:
 		ScrollTo(topLine + lParam);
-		HorizontalScrollTo(xOffset + static_cast<int>(wParam) * static_cast<int>(vs.spaceWidth));
+		HorizontalScrollTo(xOffset + static_cast<int>(static_cast<int>(wParam) * vs.spaceWidth));
 		return 1;
 
 	case Message::SetXOffset:
@@ -6290,40 +6381,25 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::FindTextFull:
 		return FindTextFull(wParam, lParam);
 
-	case Message::GetTextRange: {
-			if (lParam == 0)
-				return 0;
-			TextRange *tr = static_cast<TextRange *>(PtrFromSPtr(lParam));
-			Sci::Position cpMax = static_cast<Sci::Position>(tr->chrg.cpMax);
-			if (cpMax == -1)
-				cpMax = pdoc->Length();
-			PLATFORM_ASSERT(cpMax <= pdoc->Length());
-			Sci::Position len = cpMax - tr->chrg.cpMin; 	// No -1 as cpMin and cpMax are referring to inter character positions
-			pdoc->GetCharRange(tr->lpstrText, tr->chrg.cpMin, len);
-			// Spec says copied text is terminated with a NUL
-			tr->lpstrText[len] = '\0';
-			return len; 	// Not including NUL
+	case Message::GetTextRange:
+		if (TextRange *tr = static_cast<TextRange *>(PtrFromSPtr(lParam))) {
+			return GetTextRange(tr->lpstrText, tr->chrg.cpMin, tr->chrg.cpMax);
 		}
+		return 0;
 
-	case Message::GetTextRangeFull: {
-			if (lParam == 0)
-				return 0;
-			TextRangeFull *tr = static_cast<TextRangeFull *>(PtrFromSPtr(lParam));
-			Sci::Position cpMax = tr->chrg.cpMax;
-			if (cpMax == -1)
-				cpMax = pdoc->Length();
-			PLATFORM_ASSERT(cpMax <= pdoc->Length());
-			const Sci::Position len = cpMax - tr->chrg.cpMin; 	// No -1 as cpMin and cpMax are referring to inter character positions
-			PLATFORM_ASSERT(len >= 0);
-			pdoc->GetCharRange(tr->lpstrText, tr->chrg.cpMin, len);
-			// Spec says copied text is terminated with a NUL
-			tr->lpstrText[len] = '\0';
-			return len; 	// Not including NUL
+	case Message::GetTextRangeFull:
+		if (TextRangeFull *tr = static_cast<TextRangeFull *>(PtrFromSPtr(lParam))) {
+			return GetTextRange(tr->lpstrText, tr->chrg.cpMin, tr->chrg.cpMax);
 		}
+		return 0;
 
 	case Message::HideSelection:
-		view.hideSelection = wParam != 0;
+		vs.selection.visible = wParam == 0;
 		Redraw();
+		break;
+
+	case Message::GetSelectionHidden:
+		return !vs.selection.visible;
 		break;
 
 	case Message::FormatRange:
@@ -6563,19 +6639,17 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		pdoc->SetSavePoint();
 		break;
 
-	case Message::GetStyledText: {
-			if (lParam == 0)
-				return 0;
-			TextRange *tr = static_cast<TextRange *>(PtrFromSPtr(lParam));
-			Sci::Position iPlace = 0;
-			for (Sci::Position iChar = tr->chrg.cpMin; iChar < tr->chrg.cpMax; iChar++) {
-				tr->lpstrText[iPlace++] = pdoc->CharAt(iChar);
-				tr->lpstrText[iPlace++] = pdoc->StyleAt(iChar);
-			}
-			tr->lpstrText[iPlace] = '\0';
-			tr->lpstrText[iPlace + 1] = '\0';
-			return iPlace;
+	case Message::GetStyledText:
+		if (TextRange *tr = static_cast<TextRange *>(PtrFromSPtr(lParam))) {
+			return GetStyledText(tr->lpstrText, tr->chrg.cpMin, tr->chrg.cpMax);
 		}
+		return 0;
+
+	case Message::GetStyledTextFull:
+		if (TextRangeFull *tr = static_cast<TextRangeFull *>(PtrFromSPtr(lParam))) {
+			return GetStyledText(tr->lpstrText, tr->chrg.cpMin, tr->chrg.cpMax);
+		}
+		return 0;
 
 	case Message::CanRedo:
 		return (pdoc->CanRedo() && !pdoc->IsReadOnly()) ? 1 : 0;
@@ -7166,14 +7240,14 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		break;
 
 	case Message::MarkerGet:
-		return pdoc->GetMark(LineFromUPtr(wParam));
+		return GetMark(LineFromUPtr(wParam));
 
 	case Message::MarkerNext:
 		return pdoc->MarkerNext(LineFromUPtr(wParam), static_cast<int>(lParam));
 
 	case Message::MarkerPrevious: {
 			for (Sci::Line iLine = LineFromUPtr(wParam); iLine >= 0; iLine--) {
-				if ((pdoc->GetMark(iLine) & lParam) != 0)
+				if ((GetMark(iLine) & lParam) != 0)
 					return iLine;
 			}
 		}
@@ -7318,6 +7392,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::StyleSetChangeable:
 	case Message::StyleSetHotSpot:
 	case Message::StyleSetCheckMonospaced:
+	case Message::StyleSetInvisibleRepresentation:
 		StyleSetMessage(iMessage, wParam, lParam);
 		break;
 
@@ -7337,6 +7412,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::StyleGetChangeable:
 	case Message::StyleGetHotSpot:
 	case Message::StyleGetCheckMonospaced:
+	case Message::StyleGetInvisibleRepresentation:
 		return StyleGetMessage(iMessage, wParam, lParam);
 
 	case Message::StyleResetDefault:
@@ -7431,10 +7507,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		InvalidateStyleRedraw();
 		break;
 	case Message::GetCaretLineBack:
-		if (vs.ElementColour(Element::CaretLineBack))
-			return vs.ElementColour(Element::CaretLineBack)->OpaqueRGB();
-		else
-			return 0;
+		return vs.ElementColourForced(Element::CaretLineBack).OpaqueRGB();
 
 	case Message::SetCaretLineBack:
 		vs.SetElementRGB(Element::CaretLineBack, static_cast<int>(wParam));
@@ -7645,7 +7718,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::GetSelAlpha:
 		if (vs.selection.layer == Layer::Base)
 			return static_cast<sptr_t>(Alpha::NoAlpha);
-		return vs.ElementColour(Element::SelectionBack)->GetAlpha();
+		return vs.ElementColourForced(Element::SelectionBack).GetAlpha();
 
 	case Message::GetSelEOLFilled:
 		return vs.selection.eolFilled;
@@ -7684,7 +7757,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		break;
 
 	case Message::GetCaretFore:
-		return vs.ElementColour(Element::Caret)->OpaqueRGB();
+		return vs.ElementColourForced(Element::Caret).OpaqueRGB();
 
 	case Message::SetCaretStyle:
 		if (static_cast<CaretStyle>(wParam) <= (CaretStyle::Block | CaretStyle::OverstrikeBlock | CaretStyle::Curses | CaretStyle::BlockAfter))
@@ -8344,6 +8417,14 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::GetGapPosition:
 		return pdoc->GapPosition();
 
+	case Message::SetChangeHistory:
+		changeHistoryOption = static_cast<ChangeHistoryOption>(wParam);
+		pdoc->ChangeHistorySet(wParam & 1);
+		break;
+
+	case Message::GetChangeHistory:
+		return static_cast<sptr_t>(changeHistoryOption);
+
 	case Message::SetExtraAscent:
 		vs.extraAscent = static_cast<int>(wParam);
 		InvalidateStyleRedraw();
@@ -8697,7 +8778,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::GetAdditionalSelAlpha:
 		if (vs.selection.layer == Layer::Base)
 			return static_cast<sptr_t>(Alpha::NoAlpha);
-		return vs.ElementColour(Element::SelectionAdditionalBack)->GetAlpha();
+		return vs.ElementColourForced(Element::SelectionAdditionalBack).GetAlpha();
 
 	case Message::SetAdditionalCaretFore:
 		vs.elementColours[Element::CaretAdditional] = ColourRGBA::FromIpRGB(SPtrFromUPtr(wParam));
@@ -8705,7 +8786,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		break;
 
 	case Message::GetAdditionalCaretFore:
-		return vs.ElementColour(Element::CaretAdditional)->OpaqueRGB();
+		return vs.ElementColourForced(Element::CaretAdditional).OpaqueRGB();
 
 	case Message::RotateSelection:
 		sel.RotateMain();
