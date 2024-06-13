@@ -71,11 +71,9 @@ public:
 
 	/// Setup the calltip and return a rectangle of the area required.
 	PRectangle CallTipStart(Sci::Position pos, Point pt, int textHeight, const char *defn,
-		const char *faceName, int size, int codePage_,
-		Scintilla::CharacterSet characterSet, Scintilla::Technology technology, const char *localeName,
-		const Window &wParent);
+		int codePage_, Surface *surfaceMeasure, std::shared_ptr<Font> font_);
 
-	void CallTipCancel();
+	void CallTipCancel() noexcept;
 
 	/// Set a range of characters to be displayed in a highlight style.
 	/// Commonly used to highlight the current parameter.
@@ -91,7 +89,7 @@ public:
 	bool UseStyleCallTip() const noexcept;
 
 	// Modify foreground and background colours
-	void SetForeBack(const ColourRGBA &fore, const ColourRGBA &back) noexcept;
+	void SetForeBack(ColourRGBA fore, ColourRGBA back) noexcept;
 };
 
 }

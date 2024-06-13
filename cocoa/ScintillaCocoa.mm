@@ -59,7 +59,7 @@ constexpr Keys Key(char ch) {
 }
 
 static const KeyToCommand macMapDefault[] = {
-	// OS X specific
+	// macOS specific
 	{Keys::Down,      SCI_CTRL,   Message::DocumentEnd},
 	{Keys::Down,      SCI_CSHIFT, Message::DocumentEndExtend},
 	{Keys::Up,        SCI_CTRL,   Message::DocumentStart},
@@ -70,7 +70,7 @@ static const KeyToCommand macMapDefault[] = {
 	{Keys::Right,     SCI_CSHIFT, Message::LineEndExtend},
 
 	// Similar to Windows and GTK+
-	// Where equivalent clashes with OS X standard, use Meta instead
+	// Where equivalent clashes with macOS standard, use Meta instead
 	{Keys::Down,      SCI_NORM,   Message::LineDown},
 	{Keys::Down,      SCI_SHIFT,  Message::LineDownExtend},
 	{Keys::Down,      SCI_META,   Message::LineScrollDown},
@@ -157,10 +157,10 @@ static const KeyToCommand macMapDefault[] = {
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
 
-// Only implement FindHighlightLayer on OS X 10.6+
+// Only implement FindHighlightLayer on macOS 10.6+
 
 /**
- * Class to display the animated gold roundrect used on OS X for matches.
+ * Class to display the animated gold roundrect used on macOS for matches.
  */
 @interface FindHighlightLayer : CAGradientLayer {
 @private
@@ -416,7 +416,7 @@ ScintillaCocoa::ScintillaCocoa(ScintillaView *sciView_, SCIContentView *viewCont
 	notifyProc = NULL;
 	capturedMouse = false;
 	isFirstResponder = false;
-	isActive = false;
+	isActive = NSApp.isActive;
 	enteredSetScrollingSize = false;
 	scrollSpeed = 1;
 	scrollTicks = 2000;
@@ -567,7 +567,6 @@ class CaseFolderDBCS : public CaseFolderTable {
 	CFStringEncoding encoding;
 public:
 	explicit CaseFolderDBCS(CFStringEncoding encoding_) : encoding(encoding_) {
-		StandardASCII();
 	}
 	size_t Fold(char *folded, size_t sizeFolded, const char *mixed, size_t lenMixed) override {
 		if ((lenMixed == 1) && (sizeFolded > 0)) {
@@ -606,7 +605,6 @@ std::unique_ptr<CaseFolder> ScintillaCocoa::CaseFolderForEncoding() {
 					    vs.styles[StyleDefault].characterSet);
 		if (pdoc->dbcsCodePage == 0) {
 			std::unique_ptr<CaseFolderTable> pcf = std::make_unique<CaseFolderTable>();
-			pcf->StandardASCII();
 			// Only for single byte encodings
 			for (int i=0x80; i<0x100; i++) {
 				char sCharacter[2] = "A";
@@ -1100,7 +1098,7 @@ void ScintillaCocoa::CTPaint(void *gc, NSRect rc) {
 #pragma unused(rc)
 	std::unique_ptr<Surface> surfaceWindow(Surface::Allocate(Technology::Default));
 	surfaceWindow->Init(gc, wMain.GetID());
-	surfaceWindow->SetMode(SurfaceMode(ct.codePage, BidirectionalR2L()));
+	surfaceWindow->SetMode(CurrentSurfaceMode());
 	ct.PaintCT(surfaceWindow.get());
 	surfaceWindow->Release();
 }
@@ -1145,7 +1143,7 @@ void ScintillaCocoa::CTPaint(void *gc, NSRect rc) {
 	}
 }
 
-// On OS X, only the key view should modify the cursor so the calltip can't.
+// On macOS, only the key view should modify the cursor so the calltip can't.
 // This view does not become key so resetCursorRects never called.
 - (void) resetCursorRects {
 	//[super resetCursorRects];
@@ -1178,7 +1176,7 @@ void ScintillaCocoa::CreateCallTipWindow(PRectangle rc) {
 								styleMask: NSWindowStyleMaskBorderless
 								  backing: NSBackingStoreBuffered
 								    defer: NO];
-		[callTip setLevel: NSFloatingWindowLevel];
+		[callTip setLevel: NSModalPanelWindowLevel+1];
 		[callTip setHasShadow: YES];
 		NSRect ctContent = NSMakeRect(0, 0, rc.Width(), rc.Height());
 		CallTipView *caption = [[CallTipView alloc] initWithFrame: ctContent];
@@ -1214,7 +1212,7 @@ void ScintillaCocoa::AddToPopUp(const char *label, int cmd, bool enabled) {
 // -------------------------------------------------------------------------------------------------
 
 void ScintillaCocoa::ClaimSelection() {
-	// Mac OS X does not have a primary selection.
+	// macOS does not have a primary selection.
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1449,12 +1447,14 @@ void ScintillaCocoa::StartDrag() {
 
 	// Prepare drag image.
 	NSRect selectionRectangle = PRectangleToNSRect(rcSel);
+	if (NSIsEmptyRect(selectionRectangle))
+		return;
 
 	SCIContentView *content = ContentView();
 
 	// To get a bitmap of the text we're dragging, we just use Paint on a pixmap surface.
 	SurfaceImpl si;
-	si.SetMode(SurfaceMode(CodePage(), BidirectionalR2L()));
+	si.SetMode(CurrentSurfaceMode());
 	std::unique_ptr<SurfaceImpl> sw = si.AllocatePixMapImplementation(static_cast<int>(client.Width()), static_cast<int>(client.Height()));
 
 	const bool lastHideSelection = view.hideSelection;
@@ -1944,32 +1944,34 @@ bool ScintillaCocoa::ModifyScrollBars(Sci::Line nMax, Sci::Line nPage) {
 	return SetScrollingSize();
 }
 
-bool ScintillaCocoa::SetScrollingSize(void) {
+//--------------------------------------------------------------------------------------------------
+
+/**
+ * Adjust both scrollers to reflect the current scroll ranges and position in the editor.
+ * Called when size changes or when scroll ranges change.
+ */
+
+bool ScintillaCocoa::SetScrollingSize() {
 	bool changes = false;
 	SCIContentView *inner = ContentView();
 	if (!enteredSetScrollingSize) {
 		enteredSetScrollingSize = true;
 		NSScrollView *scrollView = ScrollContainer();
-		NSClipView *clipView = ScrollContainer().contentView;
-		NSRect clipRect = clipView.bounds;
+		const NSRect clipRect = scrollView.contentView.bounds;
 		CGFloat docHeight = pcs->LinesDisplayed() * vs.lineHeight;
 		if (!endAtLastLine)
 			docHeight += (int(scrollView.bounds.size.height / vs.lineHeight)-3) * vs.lineHeight;
 		// Allow extra space so that last scroll position places whole line at top
-		int clipExtra = int(clipRect.size.height) % vs.lineHeight;
+		const int clipExtra = int(clipRect.size.height) % vs.lineHeight;
 		docHeight += clipExtra;
 		// Ensure all of clipRect covered by Scintilla drawing
 		if (docHeight < clipRect.size.height)
 			docHeight = clipRect.size.height;
-		CGFloat docWidth = scrollWidth;
-		bool showHorizontalScroll = horizontalScrollBarVisible &&
+		const bool showHorizontalScroll = horizontalScrollBarVisible &&
 					    !Wrapping();
-		if (!showHorizontalScroll)
-			docWidth = clipRect.size.width;
-		NSRect contentRect = {{0, 0}, {docWidth, docHeight}};
-		NSRect contentRectNow = inner.frame;
-		changes = (contentRect.size.width != contentRectNow.size.width) ||
-			  (contentRect.size.height != contentRectNow.size.height);
+		const CGFloat docWidth = Wrapping() ? clipRect.size.width : scrollWidth;
+		const NSRect contentRect = NSMakeRect(0, 0, docWidth, docHeight);
+		changes = !CGSizeEqualToSize(contentRect.size, inner.frame.size);
 		if (changes) {
 			inner.frame = contentRect;
 		}
@@ -2137,7 +2139,7 @@ bool ScintillaCocoa::Draw(NSRect rect, CGContextRef gc) {
 //--------------------------------------------------------------------------------------------------
 
 /**
- * Helper function to translate OS X key codes to Scintilla key codes.
+ * Helper function to translate macOS key codes to Scintilla key codes.
  */
 static inline Keys KeyTranslate(UniChar unicodeChar, NSEventModifierFlags modifierFlags) {
 	switch (unicodeChar) {

@@ -34,8 +34,9 @@ class ScintillaGTK : public ScintillaBase {
 	int horizontalScrollBarHeight;
 
 	SelectionText primary;
+	SelectionPosition posPrimary;
 
-	GdkEvent *evbtn;
+	UniqueGdkEvent evbtn;
 	guint buttonMouse;
 	bool capturedMouse;
 	bool dragWasDropped;
@@ -59,8 +60,11 @@ class ScintillaGTK : public ScintillaBase {
 	bool preeditInitialized;
 	Window wPreedit;
 	Window wPreeditDraw;
-	GtkIMContext *im_context;
+	UniqueIMContext im_context;
 	GUnicodeScript lastNonCommonScript;
+
+	GtkSettings *settings;
+	gulong settingsHandlerId;
 
 	// Wheel mouse support
 	unsigned int linesPerScroll;
@@ -78,6 +82,7 @@ class ScintillaGTK : public ScintillaBase {
 	bool repaintFullWindow;
 
 	guint styleIdleID;
+	guint scrollBarIdleID = 0;
 	FontOptions fontOptionsPrevious;
 	int accessibilityEnabled;
 	AtkObject *accessible;
@@ -89,7 +94,7 @@ public:
 	ScintillaGTK(ScintillaGTK &&) = delete;
 	ScintillaGTK &operator=(const ScintillaGTK &) = delete;
 	ScintillaGTK &operator=(ScintillaGTK &&) = delete;
-	virtual ~ScintillaGTK();
+	~ScintillaGTK() override;
 	static ScintillaGTK *FromWidget(GtkWidget *widget) noexcept;
 	static void ClassInit(OBJECT_CLASS *object_class, GtkWidgetClass *widget_class, GtkContainerClass *container_class);
 private:
@@ -129,6 +134,7 @@ private:
 	void SetHorizontalScrollPos() override;
 	bool ModifyScrollBars(Sci::Line nMax, Sci::Line nPage) override;
 	void ReconfigureScrollBars() override;
+	void SetScrollBars() override;
 	void NotifyChange() override;
 	void NotifyFocus(bool focus) override;
 	void NotifyParent(Scintilla::NotificationData scn) override;

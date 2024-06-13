@@ -27,14 +27,15 @@ using namespace Scintilla::Internal;
 
 ScintillaQt::ScintillaQt(QAbstractScrollArea *parent)
 : QObject(parent), scrollArea(parent), vMax(0),  hMax(0), vPage(0), hPage(0),
- haveMouseCapture(false), dragWasDropped(false)
+ haveMouseCapture(false), dragWasDropped(false),
+ rectangularSelectionModifier(SCMOD_ALT)
 {
 
 	wMain = scrollArea->viewport();
 
 	imeInteraction = IMEInteraction::Inline;
 
-	// On OS X drawing text into a pixmap moves it around 1 pixel to
+	// On macOS drawing text into a pixmap moves it around 1 pixel to
 	// the right compared to drawing it directly onto a window.
 	// Buffered drawing turned off by default to avoid this.
 	view.bufferedDraw = false;
@@ -52,8 +53,8 @@ ScintillaQt::~ScintillaQt()
 
 void ScintillaQt::execCommand(QAction *action)
 {
-	int command = action->data().toInt();
-	Command(command);
+	const int commandNum = action->data().toInt();
+	Command(commandNum);
 }
 
 #if defined(Q_OS_WIN)
@@ -171,13 +172,13 @@ static QString StringFromSelectedText(const SelectionText &selectedText)
 	}
 }
 
-static void AddRectangularToMime(QMimeData *mimeData, [[maybe_unused]] QString su)
+static void AddRectangularToMime(QMimeData *mimeData, [[maybe_unused]] const QString &su)
 {
 #if defined(Q_OS_WIN)
 	// Add an empty marker
 	mimeData->setData(sMSDEVColumnSelect, QByteArray());
 #elif defined(Q_OS_MAC)
-	// OS X gets marker + data to work with other implementations.
+	// macOS gets marker + data to work with other implementations.
 	// Don't understand how this works but it does - the
 	// clipboard format is supposed to be UTF-16, not UTF-8.
 	mimeData->setData(sScintillaRecMimeType, su.toUtf8());
@@ -490,12 +491,11 @@ void ScintillaQt::onIdle()
 
 bool ScintillaQt::ChangeIdle(bool on)
 {
-	QTimer *qIdle;
 	if (on) {
 		// Start idler, if it's not running.
 		if (!idler.state) {
 			idler.state = true;
-			qIdle = new QTimer;
+			QTimer *qIdle = new QTimer;
 			connect(qIdle, SIGNAL(timeout()), this, SLOT(onIdle()));
 			qIdle->start(0);
 			idler.idlerID = qIdle;
@@ -504,7 +504,7 @@ bool ScintillaQt::ChangeIdle(bool on)
 		// Stop idler, if it's running
 		if (idler.state) {
 			idler.state = false;
-			qIdle = static_cast<QTimer *>(idler.idlerID);
+			QTimer *qIdle = static_cast<QTimer *>(idler.idlerID);
 			qIdle->stop();
 			disconnect(qIdle, SIGNAL(timeout()), nullptr, nullptr);
 			delete qIdle;
@@ -551,12 +551,12 @@ QByteArray ScintillaQt::BytesForDocument(const QString &text) const
 	}
 }
 
+namespace {
 
 class CaseFolderDBCS : public CaseFolderTable {
 	QTextCodec *codec;
 public:
 	explicit CaseFolderDBCS(QTextCodec *codec_) : codec(codec_) {
-		StandardASCII();
 	}
 	size_t Fold(char *folded, size_t sizeFolded, const char *mixed, size_t lenMixed) override {
 		if ((lenMixed == 1) && (sizeFolded > 0)) {
@@ -578,6 +578,8 @@ public:
 	}
 };
 
+}
+
 std::unique_ptr<CaseFolder> ScintillaQt::CaseFolderForEncoding()
 {
 	if (pdoc->dbcsCodePage == SC_CP_UTF8) {
@@ -587,7 +589,6 @@ std::unique_ptr<CaseFolder> ScintillaQt::CaseFolderForEncoding()
 		if (charSetBuffer) {
 			if (pdoc->dbcsCodePage == 0) {
 				std::unique_ptr<CaseFolderTable> pcf = std::make_unique<CaseFolderTable>();
-				pcf->StandardASCII();
 				QTextCodec *codec = QTextCodec::codecForName(charSetBuffer);
 				// Only for single byte encodings
 				for (int i=0x80; i<0x100; i++) {
@@ -613,7 +614,7 @@ std::unique_ptr<CaseFolder> ScintillaQt::CaseFolderForEncoding()
 
 std::string ScintillaQt::CaseMapString(const std::string &s, CaseMapping caseMapping)
 {
-	if ((s.size() == 0) || (caseMapping == CaseMapping::same))
+	if (s.empty() || (caseMapping == CaseMapping::same))
 		return s;
 
 	if (IsUnicodeMode()) {
@@ -665,7 +666,7 @@ void ScintillaQt::StartDrag()
 		QDrag *dragon = new QDrag(scrollArea);
 		dragon->setMimeData(mimeData);
 
-		Qt::DropAction dropAction = dragon->exec(Qt::CopyAction|Qt::MoveAction);
+		Qt::DropAction dropAction = dragon->exec(static_cast<Qt::DropActions>(Qt::CopyAction|Qt::MoveAction));
 		if ((dropAction == Qt::MoveAction) && dropWentOutside) {
 			// Remove dragged out text
 			ClearSelection();
@@ -677,7 +678,7 @@ void ScintillaQt::StartDrag()
 
 class CallTipImpl : public QWidget {
 public:
-	CallTipImpl(CallTip *pct_)
+	explicit CallTipImpl(CallTip *pct_)
 		: QWidget(nullptr, Qt::ToolTip),
 		  pct(pct_)
 	{
@@ -728,8 +729,8 @@ void ScintillaQt::AddToPopUp(const char *label,
 
 	// Make sure the menu's signal is connected only once.
 	menu->disconnect();
-	connect(menu, SIGNAL(triggered(QAction *)),
-	        this, SLOT(execCommand(QAction *)));
+	connect(menu, SIGNAL(triggered(QAction*)),
+		this, SLOT(execCommand(QAction*)));
 }
 
 sptr_t ScintillaQt::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam)

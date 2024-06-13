@@ -57,6 +57,7 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SCI_GETCURRENTPOS 2008
 #define SCI_GETANCHOR 2009
 #define SCI_GETSTYLEAT 2010
+#define SCI_GETSTYLEINDEXAT 2038
 #define SCI_REDO 2011
 #define SCI_SETUNDOCOLLECTION 2012
 #define SCI_SELECTALL 2013
@@ -274,6 +275,8 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SCI_STYLEGETWEIGHT 2064
 #define SCI_STYLESETCHARACTERSET 2066
 #define SCI_STYLESETHOTSPOT 2409
+#define SCI_STYLESETCHECKMONOSPACED 2254
+#define SCI_STYLEGETCHECKMONOSPACED 2255
 #define SC_ELEMENT_LIST 0
 #define SC_ELEMENT_LIST_BACK 1
 #define SC_ELEMENT_LIST_SELECTED 2
@@ -293,6 +296,8 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SC_ELEMENT_WHITE_SPACE_BACK 61
 #define SC_ELEMENT_HOT_SPOT_ACTIVE 70
 #define SC_ELEMENT_HOT_SPOT_ACTIVE_BACK 71
+#define SC_ELEMENT_FOLD_LINE 80
+#define SC_ELEMENT_HIDDEN_LINE 81
 #define SCI_SETELEMENTCOLOUR 2753
 #define SCI_GETELEMENTCOLOUR 2754
 #define SCI_RESETELEMENTCOLOUR 2755
@@ -312,6 +317,8 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SCI_SETSELECTIONLAYER 2763
 #define SCI_GETCARETLINELAYER 2764
 #define SCI_SETCARETLINELAYER 2765
+#define SCI_GETCARETLINEHIGHLIGHTSUBLINE 2773
+#define SCI_SETCARETLINEHIGHLIGHTSUBLINE 2774
 #define SCI_SETCARETFORE 2069
 #define SCI_ASSIGNCMDKEY 2070
 #define SCI_CLEARCMDKEY 2071
@@ -407,6 +414,10 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SCI_USERLISTSHOW 2117
 #define SCI_AUTOCSETAUTOHIDE 2118
 #define SCI_AUTOCGETAUTOHIDE 2119
+#define SC_AUTOCOMPLETE_NORMAL 0
+#define SC_AUTOCOMPLETE_FIXED_SIZE 1
+#define SCI_AUTOCSETOPTIONS 2638
+#define SCI_AUTOCGETOPTIONS 2639
 #define SCI_AUTOCSETDROPRESTOFWORD 2270
 #define SCI_AUTOCGETDROPRESTOFWORD 2271
 #define SCI_REGISTERIMAGE 2405
@@ -465,10 +476,13 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SCFIND_POSIX 0x00400000
 #define SCFIND_CXX11REGEX 0x00800000
 #define SCI_FINDTEXT 2150
+#define SCI_FINDTEXTFULL 2196
 #define SCI_FORMATRANGE 2151
+#define SCI_FORMATRANGEFULL 2777
 #define SCI_GETFIRSTVISIBLELINE 2152
 #define SCI_GETLINE 2153
 #define SCI_GETLINECOUNT 2154
+#define SCI_ALLOCATELINES 2089
 #define SCI_SETMARGINLEFT 2155
 #define SCI_GETMARGINLEFT 2156
 #define SCI_SETMARGINRIGHT 2157
@@ -477,6 +491,7 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SCI_SETSEL 2160
 #define SCI_GETSELTEXT 2161
 #define SCI_GETTEXTRANGE 2162
+#define SCI_GETTEXTRANGEFULL 2039
 #define SCI_HIDESELECTION 2163
 #define SCI_POINTXFROMPOSITION 2164
 #define SCI_POINTYFROMPOSITION 2165
@@ -898,6 +913,7 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define CARETSTYLE_BLOCK 2
 #define CARETSTYLE_OVERSTRIKE_BAR 0
 #define CARETSTYLE_OVERSTRIKE_BLOCK 0x10
+#define CARETSTYLE_CURSES 0x20
 #define CARETSTYLE_INS_MASK 0xF
 #define CARETSTYLE_BLOCK_AFTER 0x100
 #define SCI_SETCARETSTYLE 2512
@@ -914,6 +930,8 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SCI_INDICATOREND 2509
 #define SCI_SETPOSITIONCACHE 2514
 #define SCI_GETPOSITIONCACHE 2515
+#define SCI_SETLAYOUTTHREADS 2775
+#define SCI_GETLAYOUTTHREADS 2776
 #define SCI_COPYALLOWLINE 2519
 #define SCI_GETCHARACTERPOINTER 2520
 #define SCI_GETRANGEPOINTER 2643
@@ -1091,6 +1109,7 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SC_SUPPORTS_FRACTIONAL_STROKE_WIDTH 2
 #define SC_SUPPORTS_TRANSLUCENT_STROKE 3
 #define SC_SUPPORTS_PIXEL_MODIFICATION 4
+#define SC_SUPPORTS_THREAD_SAFE_MEASURE_WIDTHS 5
 #define SCI_SUPPORTSFEATURE 2750
 #define SC_LINECHARACTERINDEX_NONE 0
 #define SC_LINECHARACTERINDEX_UTF32 1
@@ -1253,8 +1272,18 @@ struct Sci_CharacterRange {
 	Sci_PositionCR cpMax;
 };
 
+struct Sci_CharacterRangeFull {
+	Sci_Position cpMin;
+	Sci_Position cpMax;
+};
+
 struct Sci_TextRange {
 	struct Sci_CharacterRange chrg;
+	char *lpstrText;
+};
+
+struct Sci_TextRangeFull {
+	struct Sci_CharacterRangeFull chrg;
 	char *lpstrText;
 };
 
@@ -1262,6 +1291,12 @@ struct Sci_TextToFind {
 	struct Sci_CharacterRange chrg;
 	const char *lpstrText;
 	struct Sci_CharacterRange chrgText;
+};
+
+struct Sci_TextToFindFull {
+	struct Sci_CharacterRangeFull chrg;
+	const char *lpstrText;
+	struct Sci_CharacterRangeFull chrgText;
 };
 
 typedef void *Sci_SurfaceID;
@@ -1282,6 +1317,14 @@ struct Sci_RangeToFormat {
 	struct Sci_Rectangle rc;
 	struct Sci_Rectangle rcPage;
 	struct Sci_CharacterRange chrg;
+};
+
+struct Sci_RangeToFormatFull {
+	Sci_SurfaceID hdc;
+	Sci_SurfaceID hdcTarget;
+	struct Sci_Rectangle rc;
+	struct Sci_Rectangle rcPage;
+	struct Sci_CharacterRangeFull chrg;
 };
 
 #ifndef __cplusplus

@@ -102,7 +102,7 @@ void LineMarkers::Init() {
 
 void LineMarkers::InsertLine(Sci::Line line) {
 	if (markers.Length()) {
-		markers.Insert(line, 0);
+		markers.Insert(line, nullptr);
 	}
 }
 
@@ -355,6 +355,10 @@ std::unique_ptr<char[]>AllocateAnnotation(size_t length, int style) {
 }
 
 LineAnnotation::~LineAnnotation() {
+}
+
+bool LineAnnotation::Empty() const noexcept {
+	return annotations.Length() == 0;
 }
 
 void LineAnnotation::Init() {

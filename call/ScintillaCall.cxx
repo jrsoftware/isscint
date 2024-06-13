@@ -16,6 +16,7 @@
 #include "ScintillaTypes.h"
 #include "ScintillaMessages.h"
 #include "ScintillaCall.h"
+#include "ScintillaStructures.h"
 
 namespace Scintilla {
 
@@ -51,7 +52,7 @@ intptr_t ScintillaCall::CallString(Message msg, uintptr_t wParam, const char *s)
 }
 
 std::string ScintillaCall::CallReturnString(Message msg, uintptr_t wParam) {
-	size_t len = CallPointer(msg, wParam, nullptr);
+	const size_t len = CallPointer(msg, wParam, nullptr);
 	if (len) {
 		std::string value(len, '\0');
 		CallPointer(msg, wParam, value.data());
@@ -96,8 +97,7 @@ char ScintillaCall::CharacterAt(Position position) {
 }
 
 int ScintillaCall::UnsignedStyleAt(Position position) {
-	// Returns signed value but easier to use as unsigned
-	return static_cast<unsigned char>(Call(Message::GetStyleAt, position));
+	return static_cast<int>(Call(Message::GetStyleIndexAt, position));
 }
 
 std::string ScintillaCall::StringOfSpan(Span span) {
@@ -107,6 +107,17 @@ std::string ScintillaCall::StringOfSpan(Span span) {
 		std::string text(span.Length(), '\0');
 		SetTarget(span);
 		TargetText(text.data());
+		return text;
+	}
+}
+
+std::string ScintillaCall::StringOfRange(Span span) {
+	if (span.Length() == 0) {
+		return std::string();
+	} else {
+		std::string text(span.Length(), '\0');
+		TextRangeFull tr{ {span.start, span.end}, text.data() };
+		GetTextRangeFull(&tr);
 		return text;
 	}
 }
@@ -190,6 +201,10 @@ Position ScintillaCall::Anchor() {
 
 int ScintillaCall::StyleAt(Position pos) {
 	return static_cast<int>(Call(Message::GetStyleAt, pos));
+}
+
+int ScintillaCall::StyleIndexAt(Position pos) {
+	return static_cast<int>(Call(Message::GetStyleIndexAt, pos));
 }
 
 void ScintillaCall::Redo() {
@@ -624,6 +639,14 @@ void ScintillaCall::StyleSetHotSpot(int style, bool hotspot) {
 	Call(Message::StyleSetHotSpot, style, hotspot);
 }
 
+void ScintillaCall::StyleSetCheckMonospaced(int style, bool checkMonospaced) {
+	Call(Message::StyleSetCheckMonospaced, style, checkMonospaced);
+}
+
+bool ScintillaCall::StyleGetCheckMonospaced(int style) {
+	return Call(Message::StyleGetCheckMonospaced, style);
+}
+
 void ScintillaCall::SetElementColour(Scintilla::Element element, ColourAlpha colourElement) {
 	Call(Message::SetElementColour, static_cast<uintptr_t>(element), colourElement);
 }
@@ -686,6 +709,14 @@ Layer ScintillaCall::CaretLineLayer() {
 
 void ScintillaCall::SetCaretLineLayer(Scintilla::Layer layer) {
 	Call(Message::SetCaretLineLayer, static_cast<uintptr_t>(layer));
+}
+
+bool ScintillaCall::CaretLineHighlightSubLine() {
+	return Call(Message::GetCaretLineHighlightSubLine);
+}
+
+void ScintillaCall::SetCaretLineHighlightSubLine(bool subLine) {
+	Call(Message::SetCaretLineHighlightSubLine, subLine);
 }
 
 void ScintillaCall::SetCaretFore(Colour fore) {
@@ -936,6 +967,14 @@ bool ScintillaCall::AutoCGetAutoHide() {
 	return Call(Message::AutoCGetAutoHide);
 }
 
+void ScintillaCall::AutoCSetOptions(Scintilla::AutoCompleteOption options) {
+	Call(Message::AutoCSetOptions, static_cast<uintptr_t>(options));
+}
+
+AutoCompleteOption ScintillaCall::AutoCGetOptions() {
+	return static_cast<Scintilla::AutoCompleteOption>(Call(Message::AutoCGetOptions));
+}
+
 void ScintillaCall::AutoCSetDropRestOfWord(bool dropRestOfWord) {
 	Call(Message::AutoCSetDropRestOfWord, dropRestOfWord);
 }
@@ -1100,8 +1139,16 @@ Position ScintillaCall::FindText(Scintilla::FindOption searchFlags, void *ft) {
 	return CallPointer(Message::FindText, static_cast<uintptr_t>(searchFlags), ft);
 }
 
+Position ScintillaCall::FindTextFull(Scintilla::FindOption searchFlags, void *ft) {
+	return CallPointer(Message::FindTextFull, static_cast<uintptr_t>(searchFlags), ft);
+}
+
 Position ScintillaCall::FormatRange(bool draw, void *fr) {
 	return CallPointer(Message::FormatRange, draw, fr);
+}
+
+Position ScintillaCall::FormatRangeFull(bool draw, void *fr) {
+	return CallPointer(Message::FormatRangeFull, draw, fr);
 }
 
 Line ScintillaCall::FirstVisibleLine() {
@@ -1118,6 +1165,10 @@ std::string ScintillaCall::GetLine(Line line) {
 
 Line ScintillaCall::LineCount() {
 	return Call(Message::GetLineCount);
+}
+
+void ScintillaCall::AllocateLines(Line lines) {
+	Call(Message::AllocateLines, lines);
 }
 
 void ScintillaCall::SetMarginLeft(int pixelWidth) {
@@ -1154,6 +1205,10 @@ std::string ScintillaCall::GetSelText() {
 
 Position ScintillaCall::GetTextRange(void *tr) {
 	return CallPointer(Message::GetTextRange, 0, tr);
+}
+
+Position ScintillaCall::GetTextRangeFull(void *tr) {
+	return CallPointer(Message::GetTextRangeFull, 0, tr);
 }
 
 void ScintillaCall::HideSelection(bool hide) {
@@ -2540,6 +2595,14 @@ int ScintillaCall::PositionCache() {
 	return static_cast<int>(Call(Message::GetPositionCache));
 }
 
+void ScintillaCall::SetLayoutThreads(int threads) {
+	Call(Message::SetLayoutThreads, threads);
+}
+
+int ScintillaCall::LayoutThreads() {
+	return static_cast<int>(Call(Message::GetLayoutThreads));
+}
+
 void ScintillaCall::CopyAllowLine() {
 	Call(Message::CopyAllowLine);
 }
@@ -3228,8 +3291,8 @@ std::string ScintillaCall::DescribeKeyWordSets() {
 	return CallReturnString(Message::DescribeKeyWordSets, 0);
 }
 
-int ScintillaCall::LineEndTypesSupported() {
-	return static_cast<int>(Call(Message::GetLineEndTypesSupported));
+LineEndType ScintillaCall::LineEndTypesSupported() {
+	return static_cast<Scintilla::LineEndType>(Call(Message::GetLineEndTypesSupported));
 }
 
 int ScintillaCall::AllocateSubStyles(int styleBase, int numberStyles) {
