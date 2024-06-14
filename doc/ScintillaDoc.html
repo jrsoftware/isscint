@@ -129,7 +129,7 @@
 
     <h1>Scintilla Documentation</h1>
 
-    <p>Last edited 1 November 2023 NH</p>
+    <p>Last edited 22 March 2024 NH</p>
 
     <p style="background:#90F0C0">Scintilla 5 has moved the lexers from Scintilla into a new
     <a href="Lexilla.html">Lexilla</a> project.<br />
@@ -341,96 +341,101 @@
 
         <tr>
           <td>&cir; <a class="toc" href="#UndoAndRedo">Undo and Redo</a></td>
+          <td>&cir; <a class="toc" href="#UndoSaveRestore">Undo save and restore</a></td>
           <td>&cir; <a class="toc" href="#ChangeHistory">Change history</a></td>
-          <td>&cir; <a class="toc" href="#ScrollingAndAutomaticScrolling">Scrolling and automatic scrolling</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#ScrollingAndAutomaticScrolling">Scrolling and automatic scrolling</a></td>
           <td>&cir; <a class="toc" href="#WhiteSpace">White space</a></td>
           <td>&cir; <a class="toc" href="#Cursor">Cursor</a></td>
-          <td>&cir; <a class="toc" href="#MouseCapture">Mouse capture</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#MouseCapture">Mouse capture</a></td>
           <td>&cir; <a class="toc" href="#LineEndings">Line endings</a></td>
           <td>&cir; <a class="toc" href="#Words">Words</a></td>
-          <td>&cir; <a class="toc" href="#Styling">Styling</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#Styling">Styling</a></td>
           <td>&cir; <a class="toc" href="#StyleDefinition">Style definition</a></td>
           <td>&cir; <a class="toc" href="#ElementColours">Element colours</a></td>
-          <td>&cir; <a class="toc" href="#CaretAndSelectionStyles">Selection, caret, and hotspot styles</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#CaretAndSelectionStyles">Selection, caret, and hotspot styles</a></td>
           <td>&cir; <a class="toc" href="#CharacterRepresentations">Character representations</a></td>
           <td>&cir; <a class="toc" href="#Margins">Margins</a></td>
-          <td>&cir; <a class="toc" href="#Annotations">Annotations</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#Annotations">Annotations</a></td>
           <td>&cir; <a class="toc" href="#EndOfLineAnnotations">End of Line Annotations</a></td>
           <td>&cir; <a class="toc" href="#OtherSettings">Other settings</a></td>
-          <td>&cir; <a class="toc" href="#BraceHighlighting">Brace highlighting</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#BraceHighlighting">Brace highlighting</a></td>
           <td>&cir; <a class="toc" href="#TabsAndIndentationGuides">Tabs and Indentation Guides</a></td>
           <td>&cir; <a class="toc" href="#Markers">Markers</a></td>
-          <td>&cir; <a class="toc" href="#Indicators">Indicators</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#Indicators">Indicators</a></td>
           <td>&cir; <a class="toc" href="#Autocompletion">Autocompletion</a></td>
           <td>&cir; <a class="toc" href="#UserLists">User lists</a></td>
-          <td>&cir; <a class="toc" href="#CallTips">Call tips</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#CallTips">Call tips</a></td>
           <td>&cir; <a class="toc" href="#KeyboardCommands">Keyboard commands</a></td>
           <td>&cir; <a class="toc" href="#KeyBindings">Key bindings</a></td>
-          <td>&cir; <a class="toc" href="#PopupEditMenu">Popup edit menu</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#PopupEditMenu">Popup edit menu</a></td>
           <td>&cir; <a class="toc" href="#MacroRecording">Macro recording</a></td>
           <td>&cir; <a class="toc" href="#Printing">Printing</a></td>
-          <td>&cir; <a class="toc" href="#DirectAccess">Direct access</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#DirectAccess">Direct access</a></td>
           <td>&cir; <a class="toc" href="#MultipleViews">Multiple views</a></td>
           <td>&cir; <a class="toc" href="#BackgroundLoadSave">Background loading and saving</a></td>
-          <td>&cir; <a class="toc" href="#Folding">Folding</a></td>
         </tr>
 
         <tr>
+          <td>&cir; <a class="toc" href="#DocumentInterface">Document interface</a></td>
+          <td>&cir; <a class="toc" href="#Folding">Folding</a></td>
           <td>&cir; <a class="toc" href="#LineWrapping">Line wrapping</a></td>
+        </tr>
+
+        <tr>
           <td>&cir; <a class="toc" href="#Zooming">Zooming</a></td>
           <td>&cir; <a class="toc" href="#LongLines">Long lines</a></td>
+          <td>&cir; <a class="toc" href="#Accessibility">Accessibility</a></td>
         </tr>
 
         <tr>
-          <td>&cir; <a class="toc" href="#Accessibility">Accessibility</a></td>
           <td>&cir; <a class="toc" href="#Lexer">Lexer</a></td>
           <td>&cir; <a class="toc" href="#LexerObjects">Lexer objects</a></td>
+          <td>&cir; <a class="toc" href="#Notifications">Notifications</a></td>
         </tr>
 
         <tr>
-          <td>&cir; <a class="toc" href="#Notifications">Notifications</a></td>
           <td>&cir; <a class="toc" href="#Images">Images</a></td>
           <td>&cir; <a class="toc" href="#GTK">GTK</a></td>
+          <td>&cir; <a class="toc" href="#ProvisionalMessages"><span class="provisional">Provisional messages</span></a></td>
         </tr>
 
         <tr>
-          <td>&cir; <a class="toc" href="#ProvisionalMessages"><span class="provisional">Provisional messages</span></a></td>
           <td>&cir; <a class="toc" href="#DeprecatedMessages">Deprecated messages</a></td>
           <td>&cir; <a class="toc" href="#EditMessagesNeverSupportedByScintilla">Edit messages never supported by Scintilla</a></td>
+          <td>&cir; <a class="toc" href="#RemovedFeatures">Removed features</a></td>
         </tr>
 
         <tr>
-          <td>&cir; <a class="toc" href="#RemovedFeatures">Removed features</a></td>
           <td>&cir; <a class="toc" href="#BuildingScintilla">Building Scintilla</a></td>
         </tr>
       </tbody>
@@ -979,7 +984,9 @@ struct Sci_TextRangeFull {
      <a class="message" href="#SCI_GETCURLINE">SCI_GETCURLINE(position length, char *text) &rarr; position</a><br />
      <a class="message" href="#SCI_SELECTIONISRECTANGLE">SCI_SELECTIONISRECTANGLE &rarr; bool</a><br />
      <a class="message" href="#SCI_SETSELECTIONMODE">SCI_SETSELECTIONMODE(int selectionMode)</a><br />
+     <a class="message" href="#SCI_CHANGESELECTIONMODE">SCI_CHANGESELECTIONMODE(int selectionMode)</a><br />
      <a class="message" href="#SCI_GETSELECTIONMODE">SCI_GETSELECTIONMODE &rarr; int</a><br />
+     <a class="message" href="#SCI_SETMOVEEXTENDSSELECTION">SCI_SETMOVEEXTENDSSELECTION(bool moveExtendsSelection)</a><br />
      <a class="message" href="#SCI_GETMOVEEXTENDSSELECTION">SCI_GETMOVEEXTENDSSELECTION &rarr; bool</a><br />
      <a class="message" href="#SCI_GETLINESELSTARTPOSITION">SCI_GETLINESELSTARTPOSITION(line line) &rarr; position</a><br />
      <a class="message" href="#SCI_GETLINESELENDPOSITION">SCI_GETLINESELENDPOSITION(line line) &rarr; position</a><br />
@@ -1121,22 +1128,27 @@ struct Sci_TextRangeFull {
     <p><b id="SCI_SELECTIONISRECTANGLE">SCI_SELECTIONISRECTANGLE &rarr; bool</b><br />
      This returns 1 if the current selection is in rectangle mode, 0 if not.</p>
 
-    <p><b id="SCI_SETSELECTIONMODE">SCI_SETSELECTIONMODE(int selectionMode)</b><br />
+    <p>
+    <b id="SCI_SETSELECTIONMODE">SCI_SETSELECTIONMODE(int selectionMode)</b><br />
+    <b id="SCI_CHANGESELECTIONMODE">SCI_CHANGESELECTIONMODE(int selectionMode)</b><br />
     <b id="SCI_GETSELECTIONMODE">SCI_GETSELECTIONMODE &rarr; int</b><br />
-    The two functions set and get the selection mode, which can be
+    The functions set, change, and get the selection mode, which can be
      stream (<code>SC_SEL_STREAM</code>=0) or
      rectangular (<code>SC_SEL_RECTANGLE</code>=1) or
      by lines (<code>SC_SEL_LINES</code>=2)
      or thin rectangular (<code>SC_SEL_THIN</code>=3).
-     When set in these modes, regular caret moves will extend or reduce the selection,
-     until the mode is cancelled by a call with same value or with <code>SCI_CANCEL</code>.
-     The get function returns the current mode even if the selection was made by mouse
-     or with regular extended moves.
+     When <code>SCI_SETSELECTIONMODE</code> sets these modes, regular caret moves will extend or reduce the selection,
+     until the mode is cancelled by a call with same value, or with <code>SCI_CANCEL</code>, or with <code>SCI_SETMOVEEXTENDSSELECTION</code>.
+     <code>SCI_CHANGESELECTIONMODE</code> sets the mode but does not make regular caret moves extend or reduce the selection.</p>
+     <p>The get function returns the current mode even if the selection was made by mouse or with regular extended moves.
      <code>SC_SEL_THIN</code> is the mode after a rectangular selection has been typed into and ensures
      that no characters are selected.</p>
 
-    <p><b id="SCI_GETMOVEEXTENDSSELECTION">SCI_GETMOVEEXTENDSSELECTION &rarr; bool</b><br />
-     This returns 1 if regular caret moves will extend or reduce the selection, 0 if not.
+    <p>
+    <b id="SCI_SETMOVEEXTENDSSELECTION">SCI_SETMOVEEXTENDSSELECTION(bool moveExtendsSelection)</b><br />
+    <b id="SCI_GETMOVEEXTENDSSELECTION">SCI_GETMOVEEXTENDSSELECTION &rarr; bool</b><br />
+     This controls whether regular caret moves extends the selection leaving the anchor unchanged.
+     It is 1 if regular caret moves will extend or reduce the selection, 0 if not.
      <code>SCI_SETSELECTIONMODE</code> toggles this setting between on and off.</p>
 
     <p><b id="SCI_GETLINESELSTARTPOSITION">SCI_GETLINESELSTARTPOSITION(line line) &rarr; position</b><br />
@@ -1192,6 +1204,7 @@ struct Sci_TextRangeFull {
      <a class="message" href="#SCI_CLEARSELECTIONS">SCI_CLEARSELECTIONS</a><br />
      <a class="message" href="#SCI_SETSELECTION">SCI_SETSELECTION(position caret, position anchor)</a><br />
      <a class="message" href="#SCI_ADDSELECTION">SCI_ADDSELECTION(position caret, position anchor)</a><br />
+     <a class="message" href="#SCI_SELECTIONFROMPOINT">SCI_SELECTIONFROMPOINT(int x, int y) &rarr; int</a><br />
      <a class="message" href="#SCI_DROPSELECTIONN">SCI_DROPSELECTIONN(int selection)</a><br />
      <a class="message" href="#SCI_SETMAINSELECTION">SCI_SETMAINSELECTION(int selection)</a><br />
      <a class="message" href="#SCI_GETMAINSELECTION">SCI_GETMAINSELECTION &rarr; int</a><br />
@@ -1335,6 +1348,11 @@ struct Sci_TextRangeFull {
      selections as additional selections.
      Since there is always at least one selection, to set a list of selections, the first selection should be
      added with <code>SCI_SETSELECTION</code> and later selections added with <code>SCI_ADDSELECTION</code></p>
+
+    <p>
+    <b id="SCI_SELECTIONFROMPOINT">SCI_SELECTIONFROMPOINT(int x, int y) &rarr; int</b><br />
+     Return the index of the selection at the point. If there is no selection at the point, return -1.
+     This can be used to drop a selection or make it the main selection.</p>
 
     <p>
     <b id="SCI_DROPSELECTIONN">SCI_DROPSELECTIONN(int selection)</b><br />
@@ -1973,6 +1991,117 @@ struct Sci_TextToFindFull {
      Coalescing treats coalescible container actions as transparent so will still only group together insertions that
      look like typing or deletions that look like multiple uses of the Backspace or Delete keys.
      </p>
+
+    <h2 id="UndoSaveRestore">Undo Save and Restore</h2>
+
+    <p>This feature is unfinished and has limitations.
+    When change history is active, it may show different changes than the previous session as undo actions
+    performed in that session are discarded in some circumstances such as when detaching from a save point.
+    A future version may add an API for archiving change history alongside undo history.
+    The operation sequences discussed here are a 'golden path' that has been tested to some extent and calling
+    the APIs in other circumstances or with out-of-bounds values may fail.</p>
+
+    <p>The behaviour of tentative actions in save and restore is uncertain as these are meant to be short-term states in language input
+    and which need to synchronize with a language IME (input method editor).
+    For now, restore the tentative point to -1 as it seems safest to regard the tentative change as committed.</p>
+
+    <p>Scintilla stores each change in an undo stack.
+    Various inter-action points play roles in undo behaviour: actions count, save point, detach point,
+    tentative point, and current action. Just like positions in documents, these points are between actions in the 
+    undo stack. Thus the current action specifies the number of actions that led to the current document state and
+    actions after this are for redo.
+    The save point specifies that the actions before this point are in the most recent save and actions after this are not yet saved.</p>
+    <p>When the user undoes from a save point and then performs a new change, the save point can no longer be reached and is -1.
+    The detach point is the point at which the undo stack branched away from the saved state and is used by
+    change history.</p>
+
+    <p>It is possible to retrieve the undo stack from Scintilla and subsequently restore the state of the stack.</p>
+
+    <p>An application may save both the document and its save stack between sessions to enable the user to return
+    to the same state the next time they edit.
+    For this to work, the loaded file must be exactly the same as when the undo stack was saved.
+    If the file was changed, even in minor ways like converting line ends from Windows to Unix style then
+    the undo actions will not line up so undo may fail completely and will produce unexpected results.</p>
+
+    <code><a class="message" href="#SCI_GETUNDOACTIONS">SCI_GETUNDOACTIONS &rarr; int</a><br />
+     <a class="message" href="#SCI_SETUNDOSAVEPOINT">SCI_SETUNDOSAVEPOINT(int action)</a><br />
+     <a class="message" href="#SCI_GETUNDOSAVEPOINT">SCI_GETUNDOSAVEPOINT &rarr; int</a><br />
+     <a class="message" href="#SCI_SETUNDODETACH">SCI_SETUNDODETACH(int action)</a><br />
+     <a class="message" href="#SCI_GETUNDODETACH">SCI_GETUNDODETACH &rarr; int</a><br />
+     <a class="message" href="#SCI_SETUNDOTENTATIVE">SCI_SETUNDOTENTATIVE(int action)</a><br />
+     <a class="message" href="#SCI_GETUNDOTENTATIVE">SCI_GETUNDOTENTATIVE &rarr; int</a><br />
+     <a class="message" href="#SCI_SETUNDOCURRENT">SCI_SETUNDOCURRENT(int action)</a><br />
+     <a class="message" href="#SCI_GETUNDOCURRENT">SCI_GETUNDOCURRENT &rarr; int</a><br />
+     <a class="message" href="#SCI_PUSHUNDOACTIONTYPE">SCI_PUSHUNDOACTIONTYPE(int type, position pos)</a><br />
+     <a class="message" href="#SCI_CHANGELASTUNDOACTIONTEXT">SCI_CHANGELASTUNDOACTIONTEXT(position length, const char *text)</a><br />
+     <a class="message" href="#SCI_GETUNDOACTIONTYPE">SCI_GETUNDOACTIONTYPE(int action) &rarr; int</a><br />
+     <a class="message" href="#SCI_GETUNDOACTIONPOSITION">SCI_GETUNDOACTIONPOSITION(int action) &rarr; position</a><br />
+     <a class="message" href="#SCI_GETUNDOACTIONTEXT ">SCI_GETUNDOACTIONTEXT(int action, char *text) &rarr; int</a><br />
+    </code>
+
+    <h3 id="UndoSave">Save</h3>
+
+    <p>The retrieval APIs are the 'GET*' ones:
+    <code>SCI_GETUNDOACTIONS</code>,
+    <code>SCI_GETUNDOSAVEPOINT</code>,
+    <code>SCI_GETUNDODETACH</code>,
+    <code>SCI_GETUNDOTENTATIVE</code>,
+    <code>SCI_GETUNDOCURRENT</code>,
+    <code>SCI_GETUNDOACTIONTYPE</code>,
+    <code>SCI_GETUNDOACTIONPOSITION</code>, and
+    <code>SCI_GETUNDOACTIONTEXT</code>.
+    </p>
+
+    <p>The <code>SCI_GETUNDOACTIONS</code>,
+    <code>SCI_GETUNDOSAVEPOINT</code>, <code>SCI_GETUNDODETACH</code>,
+    <code>SCI_GETUNDOTENTATIVE</code>, and <code>SCI_GETUNDOCURRENT</code>
+     APIs each return a single value and may be called in any order.
+    </p>
+
+    <p>The <code>SCI_GETUNDOACTIONTYPE</code>,
+    <code>SCI_GETUNDOACTIONPOSITION</code>, and <code>SCI_GETUNDOACTIONTEXT</code>
+    APIs take an action index and should be called with indices from 0 to one less than the result of
+    <code>SCI_GETUNDOACTIONS</code>.
+    The actions should only be iterated in the positive direction and should start from 0.
+    That is because undo stack data is not all randomly accessible and iterating in other orders may take O(n^2) time.
+    Data may also be inaccurate if a cursor is not initialised first with 0 index calls.
+    </p>
+
+    <h3 id="UndoRestore">Restore</h3>
+
+    <p>Restoration is only possible when the undo state is empty so <code>SCI_EMPTYUNDOBUFFER</code>
+    should be called first if there may already be some undo actions.</p>
+
+    <p>The restore APIs are the 'SET*' and others:
+    <code>SCI_SETUNDOSAVEPOINT</code>,
+    <code>SCI_SETUNDODETACH</code>,
+    <code>SCI_SETUNDOTENTATIVE</code>,
+    <code>SCI_SETUNDOCURRENT</code>,
+    <code>SCI_PUSHUNDOACTIONTYPE</code>, and
+    <code>SCI_CHANGELASTUNDOACTIONTEXT</code>.
+    </p>
+
+    <p>The history should first be set up with <code>SCI_PUSHUNDOACTIONTYPE</code> and
+    <code>SCI_CHANGELASTUNDOACTIONTEXT</code> then the save, detach, tentative, and current points set
+    with <code>SCI_SETUNDOSAVEPOINT</code>, <code>SCI_SETUNDODETACH</code>, <code>SCI_SETUNDOTENTATIVE</code>, and
+    <code>SCI_SETUNDOCURRENT</code>.
+    </p>
+
+    <p><code>SCI_PUSHUNDOACTIONTYPE(int type, position pos)</code> appends an action to the undo stack
+    with a particular type and position then the text and length of that action are set with
+    <code>SCI_CHANGELASTUNDOACTIONTEXT(position length, const char *text)</code>.
+    </p>
+
+    <p>
+    The last restoration API called should be <code>SCI_SETUNDOCURRENT</code> as this validates
+    the restored history and values against the document. For example, an undo history that could cause a negative
+    document length or insert / remove text outside the document is invalid.
+    If the restored undo state is invalid then a failure status is set and the undo history cleared.
+    Check for failure with <a class="seealso" href="#SCI_GETSTATUS">SCI_GETSTATUS</a>.
+    </p>
+
+    <p>The current implementation may only work when there is no tentative point.
+    </p>
 
     <h2 id="ChangeHistory">Change history</h2>
 
@@ -3675,6 +3804,22 @@ struct Sci_TextToFindFull {
            <td>Cocoa</td>
            <td>Background colour of selections when another window has focus</td>
          </tr>
+         <tr>
+           <th align="left"><code>SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_TEXT</code></th>
+           <td>18</td>
+           <td>Translucent</td>
+           <td>All</td>
+           <td></td>
+           <td>Text colour of additional selections when another window has focus</td>
+         </tr>
+         <tr>
+           <th align="left"><code>SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_BACK</code></th>
+           <td>19</td>
+           <td>Translucent</td>
+           <td>All</td>
+           <td></td>
+           <td>Background colour of additional selections when another window has focus</td>
+         </tr>
          <tr class="section">
            <th align="left"><code>SC_ELEMENT_CARET</code></th>
            <td>40</td>
@@ -3782,6 +3927,8 @@ struct Sci_TextToFindFull {
     <br />
     <a class="element" href="#SC_ELEMENT_SELECTION_INACTIVE_TEXT">SC_ELEMENT_SELECTION_INACTIVE_TEXT : colouralpha</a><br />
     <a class="element" href="#SC_ELEMENT_SELECTION_INACTIVE_BACK">SC_ELEMENT_SELECTION_INACTIVE_BACK : colouralpha</a><br />
+    <a class="element" href="#SC_ELEMENT_SELECTION_INACTIVE_TEXT">SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_TEXT : colouralpha</a><br />
+    <a class="element" href="#SC_ELEMENT_SELECTION_INACTIVE_BACK">SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_BACK : colouralpha</a><br />
     <br />
     <a class="element" href="#SC_ELEMENT_CARET_LINE_BACK">SC_ELEMENT_CARET_LINE_BACK : colouralpha</a><br />
     <a class="message" href="#SCI_SETCARETLINELAYER">SCI_SETCARETLINELAYER(int layer)</a><br />
@@ -3906,8 +4053,13 @@ struct Sci_TextToFindFull {
     <p>
      <b id="SC_ELEMENT_SELECTION_INACTIVE_TEXT">SC_ELEMENT_SELECTION_INACTIVE_TEXT : colouralpha</b><br />
      <b id="SC_ELEMENT_SELECTION_INACTIVE_BACK">SC_ELEMENT_SELECTION_INACTIVE_BACK : colouralpha</b><br />
+     <b id="SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_TEXT">SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_TEXT : colouralpha</b><br />
+     <b id="SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_BACK">SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_BACK : colouralpha</b><br />
      When a window no longer has the keyboard focus, it is customary to make its selection less noticeable by colouring it grey.
-     These elements define the colours to be used for selections without focus.
+     These elements define the colours to be used for selections without focus. When the <code>ADDITIONAL</code> elements are not set then
+     the standard values are used:
+     <code>SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_TEXT</code>&rarr;<code>SC_ELEMENT_SELECTION_INACTIVE_TEXT</code> and
+     <code>SC_ELEMENT_SELECTION_INACTIVE_ADDITIONAL_BACK</code>&rarr;<code>SC_ELEMENT_SELECTION_INACTIVE_BACK</code>.
      </p>
 
     <p>
@@ -6291,6 +6443,18 @@ struct Sci_TextToFindFull {
 	  This also avoids a header rectangle above the list.</td>
         </tr>
 
+        <tr>
+          <td align="left"><code>SC_AUTOCOMPLETE_SELECT_FIRST_ITEM</code></td>
+
+          <td align="center">2</td>
+
+          <td>Always select the first item from the autocompletion list regardless of the value
+            entered in the editor. Useful when the autocompletion logic of the application
+            sorts autocompletion entries so that the best match is always at the top of the
+            list. Without this option, Scintilla selects the item from the autocompletion
+            list matching the value entered in the editor.</td>
+        </tr>
+
       </tbody>
     </table>
 
@@ -7190,9 +7354,11 @@ sptr_t CallScintilla(unsigned int iMessage, uptr_t wParam, sptr_t lParam){
     windows (for use with splitter windows).</p>
 
     <p>These messages use <code>pointer</code> returns and arguments to refer to documents.
-    They point to internal objects inside Scintilla and should be treated as an opaque <code>void*</code>. That
-    is, you can use and store the pointer as described in this section but you should not
-    dereference it.</p>
+    They point to <a class="seealso" href="#IDocumentEditable" style="background:#FFB000">IDocumentEditable</a> objects inside
+    Scintilla.
+    The <code>IDocumentEditable</code> interface is provisional and may change.
+    Client code can call <code>IDocumentEditable</code> methods.
+    Clients may just treat these as opaque <code>void*</code> values that are received from and passed to Scintilla without dereferencing.</p>
     <code><a class="message" href="#SCI_GETDOCPOINTER">SCI_GETDOCPOINTER &rarr; pointer</a><br />
      <a class="message" href="#SCI_SETDOCPOINTER">SCI_SETDOCPOINTER(&lt;unused&gt;, pointer doc)</a><br />
      <a class="message" href="#SCI_CREATEDOCUMENT">SCI_CREATEDOCUMENT(position bytes, int documentOptions) &rarr; pointer</a><br />
@@ -7326,7 +7492,7 @@ sptr_t CallScintilla(unsigned int iMessage, uptr_t wParam, sptr_t lParam){
     <p>The <code class="parameter">documentOptions</code> argument
     is described in the <a class="seealso" href="#documentOptions"><code>SCI_CREATEDOCUMENT</code></a> section.</p>
 
-<h4>ILoader</h4>
+<h4 id="ILoader">ILoader</h4>
 
 <div class="highlighted">
 <span class="S5">class</span><span class="S0"> </span>ILoader<span class="S0"> </span><span class="S10">{</span><br />
@@ -7343,7 +7509,9 @@ sptr_t CallScintilla(unsigned int iMessage, uptr_t wParam, sptr_t lParam){
     If a failure occurs in <code>AddData</code> or in a file reading call then loading can be abandoned and the loader released with
     the <code>Release</code> call.
     When the whole file has been read, <code>ConvertToDocument</code> should be called to produce a Scintilla
-    document pointer. The newly created document will have a reference count of 1 in the same way as a document pointer
+    document pointer. This pointer can be treated as a <code>void*</code> cookie to pass to other APIs or cast to a
+    <a class="seealso" href="#IDocumentEditable" style="background:#FFB000">IDocumentEditable*</a> pointer.
+    The newly created document will have a reference count of 1 in the same way as a document pointer
     returned from
     <a class="seealso" href="#SCI_CREATEDOCUMENT">SCI_CREATEDOCUMENT</a>.
     There is no need to call <code>Release</code> after <code>ConvertToDocument</code>.</p>
@@ -7359,6 +7527,46 @@ sptr_t CallScintilla(unsigned int iMessage, uptr_t wParam, sptr_t lParam){
     href="#SCN_MODIFYATTEMPTRO">SCN_MODIFYATTEMPTRO</a></code> notification is sent to the application.
     The application may then decide to ignore the modification or to terminate the background saving thread and reenable
     modification before returning from the notification.</p>
+
+   <h2 id="DocumentInterface" class="provisional">Document interface</h2>
+
+    <p>Applications may want to manipulate documents that are not visible and the provisional <code>IDocumentEditable</code>
+    interface can be used for this.</p>
+
+    <p><code>IDocumentEditable</code> allows more direct access to functionality and is faster than calling Scintilla APIs.</p>
+
+    <p><code>IDocumentEditable</code> pointers are returned by
+    <a class="seealso" href="#SCI_CREATEDOCUMENT">SCI_CREATEDOCUMENT</a>,
+    <a class="seealso" href="#SCI_GETDOCPOINTER">SCI_GETDOCPOINTER</a>, and
+    <a class="seealso" href="#ILoader">ILoader::ConvertToDocument</a>.</p>
+
+    <p>They may be passed to
+    <a class="seealso" href="#SCI_ADDREFDOCUMENT">SCI_ADDREFDOCUMENT</a>,
+    <a class="seealso" href="#SCI_RELEASEDOCUMENT">SCI_RELEASEDOCUMENT</a>, and
+    <a class="seealso" href="#SCI_SETDOCPOINTER">SCI_SETDOCPOINTER</a>,
+    .</p>
+
+<h4 id="IDocumentEditable">IDocumentEditable</h4>
+
+<div class="highlighted" style="background:#FFD270;border: 1px solid #FFBB00">
+<span><span class="S5">class</span><span class="S0"> </span>IDocumentEditable<span class="S0"> </span><span class="S10">{</span><br />
+<span class="S5">public</span><span class="S10">:</span><br />
+<span class="S0">&nbsp; &nbsp; &nbsp; &nbsp; </span><span class="S2">// Allow this interface to add methods over time and discover whether new methods available.</span><br />
+<span class="S0">&nbsp; &nbsp; &nbsp; &nbsp; </span><span class="S5">virtual</span><span class="S0"> </span><span class="S5">int</span><span class="S0"> </span>SCI_METHOD<span class="S0"> </span>DEVersion<span class="S10">()</span><span class="S0"> </span><span class="S5">const</span><span class="S0"> </span><span class="S5">noexcept</span><span class="S0"> </span><span class="S10">=</span><span class="S0"> </span><span class="S4">0</span><span class="S10">;</span><br />
+<br />
+<span class="S0">&nbsp; &nbsp; &nbsp; &nbsp; </span><span class="S2">// Lifetime control</span><br />
+<span class="S0">&nbsp; &nbsp; &nbsp; &nbsp; </span><span class="S5">virtual</span><span class="S0"> </span><span class="S5">int</span><span class="S0"> </span>SCI_METHOD<span class="S0"> </span>AddRef<span class="S10">()</span><span class="S0"> </span><span class="S5">noexcept</span><span class="S0"> </span><span class="S10">=</span><span class="S0"> </span><span class="S4">0</span><span class="S10">;</span><br />
+<span class="S0">&nbsp; &nbsp; &nbsp; &nbsp; </span><span class="S5">virtual</span><span class="S0"> </span><span class="S5">int</span><span class="S0"> </span>SCI_METHOD<span class="S0"> </span>Release<span class="S10">()</span><span class="S0"> </span><span class="S10">=</span><span class="S0"> </span><span class="S4">0</span><span class="S10">;</span><br />
+<span class="S10">};</span><br />
+<span class="S0"></span></span>
+</div>
+
+    <p>The <code>IDocumentEditable</code> interface is being developed and more methods will be added in the future.
+    Its also possible that methods will change signatures or be removed.
+    Thus the feature is provisional and users should be aware that they may have to modify client code in response to these changes.</p>
+
+    <p><code>DEVersion</code> will return 0 while <code>IDocumentEditable</code> is provisional and will return 1
+    for the first stable release. After that, it will be incremented when new methods are added.</p>
 
     <h2 id="Folding">Folding</h2>
 
@@ -8390,6 +8598,8 @@ sptr_t CallScintilla(unsigned int iMessage, uptr_t wParam, sptr_t lParam){
 
     <p><b id="SCI_ALLOCATESUBSTYLES">SCI_ALLOCATESUBSTYLES(int styleBase, int numberStyles) &rarr; int</b><br />
      Allocate some number of substyles for a particular base style returning the first substyle number allocated.
+     A failure, such as requesting more substyles than available, is indicated by returning a negative number.
+     Lexers that support substyles will commonly allow allocating 64 substyles. 
      Substyles are allocated contiguously.</p>
 
     <p><b id="SCI_FREESUBSTYLES">SCI_FREESUBSTYLES</b><br />
@@ -8488,7 +8698,7 @@ sptr_t CallScintilla(unsigned int iMessage, uptr_t wParam, sptr_t lParam){
 
 <p>
 The types <code>Sci_Position</code> and <code>Sci_PositionU</code> are used for positions and line numbers in the document.
-With Scintilla 4, 64-bit builds define these as 64-bit types to allow future implementation of documents larger than 2 GB.
+64-bit builds define these as 64-bit types to allow documents larger than 2 GB.
 </p>
 
 <p>
@@ -8525,6 +8735,9 @@ Previously, lexers were called with a range that started one line before the ran
 needs to be folded as this allowed fixing up the last line from the previous folding.
 The new approach allows the lexer to decide whether to backtrack or to handle this
 more efficiently.</p>
+
+<p><code>AllocateSubStyles</code> returns a negative number when more
+substyles are requested than is available.</p>
 
 <p><code>NamedStyles</code>, <code>NameOfStyle</code>,
 <code>TagsOfStyle</code>, and <code>DescriptionOfStyle</code>
@@ -8666,7 +8879,7 @@ struct SCNotification {
 	int x;			/* SCN_DWELLSTART, SCN_DWELLEND */
 	int y;		/* SCN_DWELLSTART, SCN_DWELLEND */
 	int token;		/* SCN_MODIFIED with SC_MOD_CONTAINER */
-	int annotationLinesAdded;	/* SCN_MODIFIED with SC_MOD_CHANGEANNOTATION */
+	Sci_Position annotationLinesAdded;	/* SCN_MODIFIED with SC_MOD_CHANGEANNOTATION */
 	int updated;	/* SCN_UPDATEUI */
 	int listCompletionMethod;
 	/* SCN_AUTOCSELECTION, SCN_AUTOCCOMPLETED, SCN_USERLISTSELECTION */
