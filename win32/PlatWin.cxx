@@ -1023,8 +1023,8 @@ void SurfaceGDI::DrawRGBAImage(PRectangle rc, int width, int height, const unsig
 		DIBSection section(hdc, size);
 		if (section) {
 			RGBAImage::BGRAFromRGBA(section.Bytes(), pixelsImage, static_cast<size_t>(width) * height);
-			GdiAlphaBlend(hdc, static_cast<int>(rc.left), static_cast<int>(rc.top),
-				static_cast<int>(rc.Width()), static_cast<int>(rc.Height()), section.DC(),
+			GdiAlphaBlend(hdc, static_cast<int>(std::round(rc.left)), static_cast<int>(std::round(rc.top)),
+				static_cast<int>(std::round(rc.Width())), static_cast<int>(std::round(rc.Height())), section.DC(),
 				0, 0, width, height, mergeAlpha);
 		}
 	}
@@ -1807,10 +1807,10 @@ void SurfaceD2D::GradientRectangle(PRectangle rc, const std::vector<ColourStop> 
 void SurfaceD2D::DrawRGBAImage(PRectangle rc, int width, int height, const unsigned char *pixelsImage) {
 	if (pRenderTarget) {
 		if (rc.Width() > width)
-			rc.left += std::floor((rc.Width() - width) / 2);
+			rc.left += std::round((rc.Width() - width) / 2);
 		rc.right = rc.left + width;
 		if (rc.Height() > height)
-			rc.top += std::floor((rc.Height() - height) / 2);
+			rc.top += std::round((rc.Height() - height) / 2);
 		rc.bottom = rc.top + height;
 
 		std::vector<unsigned char> image(RGBAImage::bytesPerPixel * height * width);
