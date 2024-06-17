@@ -2683,6 +2683,7 @@ std::unique_ptr<Surface> Surface::Allocate(Technology technology) {
 	else
 		return std::make_unique<SurfaceD2D>();
 #else
+  (void)technology;
 	return std::make_unique<SurfaceGDI>();
 #endif
 }
