@@ -436,6 +436,8 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	void PasteRectangular(SelectionPosition pos, const char *ptr, Sci::Position len);
 	virtual void Copy() = 0;
 	void CopyAllowLine();
+	void CutAllowLine();
+	void LineCut(bool checkContainsProtected);
 	virtual bool CanPaste();
 	virtual void Paste() = 0;
 	void Clear();

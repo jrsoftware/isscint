@@ -2267,6 +2267,28 @@ void Editor::CopyAllowLine() {
 	CopyToClipboard(selectedText);
 }
 
+void Editor::CutAllowLine() {
+	if (sel.Empty()) {
+		pdoc->CheckReadOnly();
+		if (!pdoc->IsReadOnly()) {
+			LineCut(true);
+		}
+	} else {
+		Cut();
+	}
+}
+
+void Editor::LineCut(bool checkContainsProtected) {
+	const Sci::Line lineStart = pdoc->SciLineFromPosition(SelectionStart().Position());
+	const Sci::Line lineEnd = pdoc->SciLineFromPosition(SelectionEnd().Position());
+	const Sci::Position start = pdoc->LineStart(lineStart);
+	const Sci::Position end = pdoc->LineStart(lineEnd + 1);
+	if (!checkContainsProtected || !RangeContainsProtected(start, end)) {
+		SetSelection(start, end);
+		Cut();
+	}
+}
+
 void Editor::Cut() {
 	pdoc->CheckReadOnly();
 	if (!pdoc->IsReadOnly() && !SelectionContainsProtected()) {
@@ -2959,6 +2981,7 @@ void Editor::NotifyMacroRecord(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::PageDownRectExtend:
 	case Message::SelectionDuplicate:
 	case Message::CopyAllowLine:
+	case Message::CutAllowLine:
 	case Message::VerticalCentreCaret:
 	case Message::MoveSelectedLinesUp:
 	case Message::MoveSelectedLinesDown:
@@ -3982,12 +4005,7 @@ int Editor::KeyCommand(Message iMessage) {
 		}
 		break;
 	case Message::LineCut: {
-			const Sci::Line lineStart = pdoc->SciLineFromPosition(SelectionStart().Position());
-			const Sci::Line lineEnd = pdoc->SciLineFromPosition(SelectionEnd().Position());
-			const Sci::Position start = pdoc->LineStart(lineStart);
-			const Sci::Position end = pdoc->LineStart(lineEnd + 1);
-			SetSelection(start, end);
-			Cut();
+			LineCut(false);
 			SetLastXChosen();
 		}
 		break;
@@ -6181,6 +6199,11 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case Message::CopyAllowLine:
 		CopyAllowLine();
+		break;
+
+	case Message::CutAllowLine:
+		CutAllowLine();
+		SetLastXChosen();
 		break;
 
 	case Message::VerticalCentreCaret:

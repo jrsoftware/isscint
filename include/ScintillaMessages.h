@@ -637,6 +637,7 @@ enum class Message {
 	SetLayoutThreads = 2775,
 	GetLayoutThreads = 2776,
 	CopyAllowLine = 2519,
+	CutAllowLine = 2805,
 	GetCharacterPointer = 2520,
 	GetRangePointer = 2643,
 	GetGapPosition = 2644,
