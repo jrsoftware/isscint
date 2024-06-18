@@ -45,4 +45,5 @@ exit /b 0
 :failed
 echo *** FAILED ***
 pause
+:failed2
 exit /b 1
