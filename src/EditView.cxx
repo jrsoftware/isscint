@@ -1594,7 +1594,7 @@ void EditView::DrawCarets(Surface *surface, const EditModel &model, const ViewSt
 				//assert(caretColour.IsOpaque());
 
 				int marks = model.GetMark(lineDoc);
-				for (int markBit = 0; (markBit < 32) && marks; markBit++) {
+				for (int markBit = 0; (markBit <= MarkerMax) && marks; markBit++) {
 					if ((marks & 1) && (vsDraw.markers[markBit].markType == MarkerSymbol::BackFore)) {
 						caretColour = vsDraw.markers[markBit].fore;
 					}
@@ -2199,7 +2199,7 @@ void EditView::DrawForeground(Surface *surface, const EditModel &model, const Vi
 			}
 
 			int marks = model.GetMark(line);
-			for (int markBit = 0; (markBit < 32) && marks; markBit++) {
+			for (int markBit = 0; (markBit <= MarkerMax) && marks; markBit++) {
 				if ((marks & 1) && (vsDraw.markers[markBit].markType == MarkerSymbol::BackFore)) {
 					textFore = vsDraw.markers[markBit].fore;
 				}

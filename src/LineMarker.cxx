@@ -457,9 +457,9 @@ void LineMarker::Draw(Surface *surface, const PRectangle &rcWhole, const Font *f
 
 	case MarkerSymbol::Empty:
 	case MarkerSymbol::Background:
+	case MarkerSymbol::BackFore:
 	case MarkerSymbol::Underline:
 	case MarkerSymbol::Available:
-	case MarkerSymbol::BackFore:
 		// An invisible marker so don't draw anything
 		break;
 

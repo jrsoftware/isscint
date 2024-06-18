@@ -349,6 +349,7 @@ void ViewStyle::CalculateMarginWidthAndMask() noexcept {
 			maskInLine &= ~maskBit;
 			break;
 		case MarkerSymbol::Background:
+		case MarkerSymbol::BackFore:
 		case MarkerSymbol::Underline:
 			maskInLine &= ~maskBit;
 			maskDrawInText |= maskDefinedMarkers & maskBit;
