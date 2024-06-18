@@ -69,8 +69,6 @@ CXXFLAGS=$(CXXFLAGS) $(INCLUDES)
 
 all:	$(COMPONENT) $(LIBSCI)
 
-component:	$(COMPONENT)
-
 clean:
 	-del /q $(DIR_O)\*.obj $(DIR_O)\*.pdb $(DIR_O)\*.asm $(COMPONENT) \
 	$(DIR_O)\*.res $(DIR_BIN)\*.map $(DIR_BIN)\*.exp $(DIR_BIN)\*.pdb \

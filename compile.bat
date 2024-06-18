@@ -40,7 +40,7 @@ if "%1"=="noclean" goto noclean
 nmake -s -f scintilla.mak clean
 if errorlevel 1 goto failed
 :noclean
-nmake -s -f scintilla.mak component
+nmake -s -f scintilla.mak
 if errorlevel 1 goto failed
 
 echo Success!
