@@ -87,7 +87,7 @@ enum class MarkerSymbol {
 	Bookmark = 31,
 	VerticalBookmark = 32,
 	Bar = 33,
-	BackFore = 3030,
+	BackFore = 34,
 	Character = 10000,
 };
 

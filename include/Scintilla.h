@@ -154,7 +154,7 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SC_MARK_BOOKMARK 31
 #define SC_MARK_VERTICALBOOKMARK 32
 #define SC_MARK_BAR 33
-#define SC_MARK_BACKFORE 3030
+#define SC_MARK_BACKFORE 34
 #define SC_MARK_CHARACTER 10000
 #define SC_MARKNUM_HISTORY_REVERTED_TO_ORIGIN 21
 #define SC_MARKNUM_HISTORY_SAVED 22
