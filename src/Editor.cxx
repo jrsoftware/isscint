@@ -8816,10 +8816,14 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		Redraw();
 		break;
 
-	case Message::SetSelection:
-		sel.SetSelection(SelectionRange(PositionFromUPtr(wParam), lParam));
-		Redraw();
-		break;
+	case Message::SetSelection: {
+			const bool changingMultipleSelection = sel.Count() > 1;
+			sel.SetSelection(SelectionRange(PositionFromUPtr(wParam), lParam));
+			if (changingMultipleSelection)
+				ContainerNeedsUpdate(Update::Selection);
+			Redraw();
+			break;
+		}
 
 	case Message::AddSelection:
 		sel.AddSelection(SelectionRange(PositionFromUPtr(wParam), lParam));
