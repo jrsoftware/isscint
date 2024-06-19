@@ -41,6 +41,7 @@ public:
 	 *  Ordering::Custom:      Handle non-alphabetical entries; start up performance cost for generating a sorted lookup table
 	 */
 	Scintilla::Ordering autoSort;
+	bool useStyleAutoCompletion;
 
 	AutoComplete();
 	// Deleted so AutoComplete objects can not be copied.
@@ -91,6 +92,12 @@ public:
 
 	/// Select a list element that starts with word as the current element
 	void Select(const char *word);
+
+	/// Set which STYLE_xxxx to use for autcompletion lists
+	void SetUseStyleAutoCompletion(bool use) noexcept;
+
+	/// Used to determine which STYLE_xxxx to use for autcompletion lists
+	bool UseStyleAutoCompletion() const noexcept;
 };
 
 }

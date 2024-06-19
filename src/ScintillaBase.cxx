@@ -273,8 +273,13 @@ void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list
 		ac.options,
 	};
 
+	// If container knows about StyleAutoCompletion then use it in place of the
+	// StyleDefault for the face name, size and character set.
+	const int ctStyle = ac.UseStyleAutoCompletion() ? StyleAutoCompletion : StyleDefault;
+	const Style &style = vs.styles[ctStyle];
+
 	ac.Start(wMain, idAutoComplete, sel.MainCaret(), PointMainCaret(),
-				lenEntered, vs.styles[StyleAutoCompletion].lineHeight, IsUnicodeMode(), technology, options);
+				lenEntered, style.lineHeight, IsUnicodeMode(), technology, options);
 
 	const PRectangle rcClient = GetClientRectangle();
 	Point pt = LocationFromPosition(sel.MainCaret() - lenEntered);
@@ -307,8 +312,8 @@ void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list
 	rcac.right = rcac.left + widthLB;
 	rcac.bottom = static_cast<XYPOSITION>(std::min(static_cast<int>(rcac.top) + heightLB, static_cast<int>(rcPopupBounds.bottom)));
 	ac.lb->SetPositionRelative(rcac, &wMain);
-	ac.lb->SetFont(vs.styles[StyleAutoCompletion].font.get());
-	const int aveCharWidth = static_cast<int>(vs.styles[StyleAutoCompletion].aveCharWidth);
+	ac.lb->SetFont(style.font.get());
+	const int aveCharWidth = static_cast<int>(style.aveCharWidth);
 	ac.lb->SetAverageCharWidth(aveCharWidth);
 	ac.lb->SetDelegate(this);
 
@@ -941,6 +946,10 @@ sptr_t ScintillaBase::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case Message::AutoCGetMaxWidth:
 		return maxListWidth;
+
+	case Message::AutoCUseStyle:
+	  ac.SetUseStyleAutoCompletion(true);
+		break;
 
 	case Message::RegisterImage:
 		ac.lb->RegisterImage(static_cast<int>(wParam), ConstCharPtrFromSPtr(lParam));

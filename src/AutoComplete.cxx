@@ -48,7 +48,8 @@ AutoComplete::AutoComplete() :
 	ignoreCaseBehaviour(CaseInsensitiveBehaviour::RespectCase),
 	widthLBDefault(100),
 	heightLBDefault(100),
-	autoSort(Ordering::PreSorted) {
+	autoSort(Ordering::PreSorted),
+	useStyleAutoCompletion(false) {
 	lb = ListBox::Allocate();
 }
 
@@ -301,3 +302,10 @@ void AutoComplete::Select(const char *word) {
 	}
 }
 
+void AutoComplete::SetUseStyleAutoCompletion(bool use) noexcept {
+	useStyleAutoCompletion = use;
+}
+
+bool AutoComplete::UseStyleAutoCompletion() const noexcept {
+	return useStyleAutoCompletion;
+}

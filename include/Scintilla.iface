@@ -1152,6 +1152,9 @@ set void AutoCSetMaxHeight=2210(int rowCount,)
 # Set the maximum height, in rows, of auto-completion and user lists.
 get int AutoCGetMaxHeight=2211(,)
 
+# Enable use of STYLE_AUTOCOMPLETION.
+set void AutoCUseStyle=2806(,)
+
 # Set the number of spaces used for one level of indentation.
 set void SetIndent=2122(int indentSize,)
 
