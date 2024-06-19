@@ -68,27 +68,27 @@ class SelectionText {
 	std::string s;
 public:
 	bool rectangular;
-	bool lineCopy;
+	bool lineCopyOrCut;
 	int codePage;
 	Scintilla::CharacterSet characterSet;
-	SelectionText() noexcept : rectangular(false), lineCopy(false), codePage(0), characterSet(Scintilla::CharacterSet::Ansi) {}
+	SelectionText() noexcept : rectangular(false), lineCopyOrCut(false), codePage(0), characterSet(Scintilla::CharacterSet::Ansi) {}
 	void Clear() noexcept {
 		s.clear();
 		rectangular = false;
-		lineCopy = false;
+		lineCopyOrCut = false;
 		codePage = 0;
 		characterSet = Scintilla::CharacterSet::Ansi;
 	}
-	void Copy(const std::string &s_, int codePage_, Scintilla::CharacterSet characterSet_, bool rectangular_, bool lineCopy_) {
+	void Copy(const std::string &s_, int codePage_, Scintilla::CharacterSet characterSet_, bool rectangular_, bool lineCopyOrCut_) {
 		s = s_;
 		codePage = codePage_;
 		characterSet = characterSet_;
 		rectangular = rectangular_;
-		lineCopy = lineCopy_;
+		lineCopyOrCut = lineCopyOrCut_;
 		FixSelectionForClipboard();
 	}
 	void Copy(const SelectionText &other) {
-		Copy(other.s, other.codePage, other.characterSet, other.rectangular, other.lineCopy);
+		Copy(other.s, other.codePage, other.characterSet, other.rectangular, other.lineCopyOrCut);
 	}
 	const char *Data() const noexcept {
 		return s.c_str();
@@ -437,7 +437,6 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	virtual void Copy() = 0;
 	void CopyAllowLine();
 	void CutAllowLine();
-	void LineCut(bool checkContainsProtected);
 	virtual bool CanPaste();
 	virtual void Paste() = 0;
 	void Clear();
@@ -483,6 +482,7 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	enum class CaseMapping { same, upper, lower };
 	virtual std::string CaseMapString(const std::string &s, CaseMapping caseMapping);
 	void ChangeCaseOfSelection(CaseMapping caseMapping);
+	void LineDelete();
 	void LineTranspose();
 	void LineReverse();
 	void Duplicate(bool forLine);
@@ -517,6 +517,7 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 
 	virtual void CopyToClipboard(const SelectionText &selectedText) = 0;
 	std::string RangeText(Sci::Position start, Sci::Position end) const;
+	bool CopyLineRange(SelectionText *ss, bool allowProtected=true);
 	void CopySelectionRange(SelectionText *ss, bool allowLineCopy=false);
 	void CopyRangeToClipboard(Sci::Position start, Sci::Position end);
 	void CopyText(size_t length, const char *text);
