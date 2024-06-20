@@ -538,7 +538,9 @@ public:
 	void Cancel();
 	void DeleteBack();
 	void Tab();
+	void LineTab();
 	void BackTab();
+	void LineBackTab();
 	void NewLine();
 	void FormFeed();
 	void VCHome();

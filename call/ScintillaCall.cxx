@@ -1971,8 +1971,16 @@ void ScintillaCall::Tab() {
 	Call(Message::Tab);
 }
 
+void ScintillaCall::LineTab() {
+	Call(Message::LineTab);
+}
+
 void ScintillaCall::BackTab() {
 	Call(Message::BackTab);
+}
+
+void ScintillaCall::LineBackTab() {
+	Call(Message::LineBackTab);
 }
 
 void ScintillaCall::NewLine() {
