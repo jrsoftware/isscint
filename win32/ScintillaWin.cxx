@@ -3285,7 +3285,7 @@ void ScintillaWin::CopyToClipboard(const SelectionText &selectedText) {
 		}
 	}
 
-	if (selectedText.lineCopyOrCut) {
+	if (selectedText.lineCopy) {
 		::SetClipboardData(cfLineSelect, 0);
 		::SetClipboardData(cfVSLineTag, 0);
 	}

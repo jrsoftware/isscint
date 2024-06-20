@@ -68,27 +68,27 @@ class SelectionText {
 	std::string s;
 public:
 	bool rectangular;
-	bool lineCopyOrCut;
+	bool lineCopy;
 	int codePage;
 	Scintilla::CharacterSet characterSet;
-	SelectionText() noexcept : rectangular(false), lineCopyOrCut(false), codePage(0), characterSet(Scintilla::CharacterSet::Ansi) {}
+	SelectionText() noexcept : rectangular(false), lineCopy(false), codePage(0), characterSet(Scintilla::CharacterSet::Ansi) {}
 	void Clear() noexcept {
 		s.clear();
 		rectangular = false;
-		lineCopyOrCut = false;
+		lineCopy = false;
 		codePage = 0;
 		characterSet = Scintilla::CharacterSet::Ansi;
 	}
-	void Copy(const std::string &s_, int codePage_, Scintilla::CharacterSet characterSet_, bool rectangular_, bool lineCopyOrCut_) {
+	void Copy(const std::string &s_, int codePage_, Scintilla::CharacterSet characterSet_, bool rectangular_, bool lineCopy_) {
 		s = s_;
 		codePage = codePage_;
 		characterSet = characterSet_;
 		rectangular = rectangular_;
-		lineCopyOrCut = lineCopyOrCut_;
+		lineCopy = lineCopy_;
 		FixSelectionForClipboard();
 	}
 	void Copy(const SelectionText &other) {
-		Copy(other.s, other.codePage, other.characterSet, other.rectangular, other.lineCopyOrCut);
+		Copy(other.s, other.codePage, other.characterSet, other.rectangular, other.lineCopy);
 	}
 	const char *Data() const noexcept {
 		return s.c_str();
