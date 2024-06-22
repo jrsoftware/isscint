@@ -273,8 +273,6 @@ void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list
 		ac.options,
 	};
 
-	// If container knows about StyleAutoCompletion then use it in place of the
-	// StyleDefault for the face name, size and character set.
 	const int ctStyle = StyleDefault;
 	const Style &style = vs.styles[ctStyle + vs.autocStyleOffset];
 
@@ -952,7 +950,7 @@ sptr_t ScintillaBase::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		break;
 
 	case Message::AutoCGetStyleOffset:
-	  return vs.autocStyleOffset;
+		return vs.autocStyleOffset;
 
 	case Message::RegisterImage:
 		ac.lb->RegisterImage(static_cast<int>(wParam), ConstCharPtrFromSPtr(lParam));
