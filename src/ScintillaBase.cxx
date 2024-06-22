@@ -275,8 +275,8 @@ void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list
 
 	// If container knows about StyleAutoCompletion then use it in place of the
 	// StyleDefault for the face name, size and character set.
-	const int ctStyle = ac.UseStyleAutoCompletion() ? StyleAutoCompletion : StyleDefault;
-	const Style &style = vs.styles[ctStyle];
+	const int ctStyle = StyleDefault;
+	const Style &style = vs.styles[ctStyle + vs.autocStyleOffset];
 
 	ac.Start(wMain, idAutoComplete, sel.MainCaret(), PointMainCaret(),
 				lenEntered, style.lineHeight, IsUnicodeMode(), technology, options);
@@ -947,9 +947,12 @@ sptr_t ScintillaBase::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::AutoCGetMaxWidth:
 		return maxListWidth;
 
-	case Message::AutoCUseStyle:
-	  ac.SetUseStyleAutoCompletion(true);
+	case Message::AutoCSetStyleOffset:
+		vs.autocStyleOffset = static_cast<int>(wParam);
 		break;
+
+	case Message::AutoCGetStyleOffset:
+	  return vs.autocStyleOffset;
 
 	case Message::RegisterImage:
 		ac.lb->RegisterImage(static_cast<int>(wParam), ConstCharPtrFromSPtr(lParam));

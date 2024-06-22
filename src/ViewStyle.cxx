@@ -253,6 +253,8 @@ ViewStyle::ViewStyle(size_t stylesSize_) :
 	ctrlCharPadding = 3; // +3 For a blank on front and rounded edge each side
 	lastSegItalicsOffset = 2;
 
+	autocStyleOffset = 0;
+
 	localeName = localeNameDefault;
 }
 
@@ -795,7 +797,8 @@ FontRealised *ViewStyle::Find(const FontSpecification &fs) {
 
 void ViewStyle::FindMaxAscentDescent() noexcept {
 	for (size_t i = 0; i < styles.size(); i++) {
-		if (i == StyleCallTip || i == StyleAutoCompletion)
+		if (i == StyleCallTip ||
+		    (autocStyleOffset != 0 && i == StyleDefault + static_cast<size_t>(autocStyleOffset)))
 			continue;
 
 		const auto &style = styles[i];

@@ -543,8 +543,7 @@ val STYLE_CONTROLCHAR=36
 val STYLE_INDENTGUIDE=37
 val STYLE_CALLTIP=38
 val STYLE_FOLDDISPLAYTEXT=39
-val STYLE_AUTOCOMPLETION=40
-val STYLE_LASTPREDEFINED=40
+val STYLE_LASTPREDEFINED=39
 val STYLE_MAX=255
 
 ali STYLE_LINENUMBER=LINE_NUMBER
@@ -554,7 +553,6 @@ ali STYLE_CONTROLCHAR=CONTROL_CHAR
 ali STYLE_INDENTGUIDE=INDENT_GUIDE
 ali STYLE_CALLTIP=CALL_TIP
 ali STYLE_FOLDDISPLAYTEXT=FOLD_DISPLAY_TEXT
-ali STYLE_AUTOCOMPLETION=AUTO_COMPLETION
 ali STYLE_LASTPREDEFINED=LAST_PREDEFINED
 
 # Character set identifiers are used in StyleSetCharacterSet.
@@ -1152,8 +1150,11 @@ set void AutoCSetMaxHeight=2210(int rowCount,)
 # Set the maximum height, in rows, of auto-completion and user lists.
 get int AutoCGetMaxHeight=2211(,)
 
-# Enable use of STYLE_AUTOCOMPLETION.
-set void AutoCUseStyle=2806(,)
+# Set the start of the range of style numbers used auto-completion and user lists.
+set void AutoCSetStyleOffset=2806(,)
+
+# Get the start of the range of style numbers used auto-completion and user lists.
+get int AutoCGetStyleOffset=2807(,)
 
 # Set the number of spaces used for one level of indentation.
 set void SetIndent=2122(int indentSize,)
@@ -1992,14 +1993,14 @@ fun void DeleteBack=2326(,)
 fun void Tab=2327(,)
 
 # Indent the current and selected lines.
-fun void LineTab=2807(,)
+fun void LineTab=2808(,)
 
 # If selection is empty or all on one line dedent the line if caret is at start, else move caret.
 # If more than one line selected, dedent the lines.
 fun void BackTab=2328(,)
 
 # Dedent the current and selected lines.
-fun void LineBackTab=2808(,)
+fun void LineBackTab=2809(,)
 
 # Insert a new line, may use a CRLF, CR or LF depending on EOL mode.
 fun void NewLine=2329(,)
@@ -2737,7 +2738,7 @@ get int MarginGetStyles=2535(line line, stringresult styles)
 # Clear the margin text on all lines
 fun void MarginTextClearAll=2536(,)
 
-# Get the start of the range of style numbers used for margin text
+# Set the start of the range of style numbers used for margin text
 set void MarginSetStyleOffset=2537(int style,)
 
 # Get the start of the range of style numbers used for margin text
@@ -2791,7 +2792,7 @@ set void AnnotationSetVisible=2548(AnnotationVisible visible,)
 # Get the visibility for the annotations for a view
 get AnnotationVisible AnnotationGetVisible=2549(,)
 
-# Get the start of the range of style numbers used for annotations
+# Set the start of the range of style numbers used for annotations
 set void AnnotationSetStyleOffset=2550(int style,)
 
 # Get the start of the range of style numbers used for annotations
@@ -3169,7 +3170,7 @@ set void EOLAnnotationSetVisible=2745(EOLAnnotationVisible visible,)
 # Get the visibility for the end of line annotations for a view
 get EOLAnnotationVisible EOLAnnotationGetVisible=2746(,)
 
-# Get the start of the range of style numbers used for end of line annotations
+# Set the start of the range of style numbers used for end of line annotations
 set void EOLAnnotationSetStyleOffset=2747(int style,)
 
 # Get the start of the range of style numbers used for end of line annotations

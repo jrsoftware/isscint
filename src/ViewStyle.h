@@ -105,7 +105,6 @@ enum StyleIndices {
 	StyleIndentGuide = static_cast<int>(Scintilla::StylesCommon::IndentGuide),
 	StyleCallTip = static_cast<int>(Scintilla::StylesCommon::CallTip),
 	StyleFoldDisplayText = static_cast<int>(Scintilla::StylesCommon::FoldDisplayText),
-	StyleAutoCompletion = static_cast<int>(Scintilla::StylesCommon::AutoCompletion),
 };
 
 /**
@@ -180,6 +179,7 @@ public:
 	int marginNumberPadding; // the right-side padding of the number margin
 	int ctrlCharPadding; // the padding around control character text blobs
 	int lastSegItalicsOffset; // the offset so as not to clip italic characters at EOLs
+	int autocStyleOffset;
 
 	using ElementMap = std::map<Scintilla::Element, ColourOptional>;
 	ElementMap elementColours;

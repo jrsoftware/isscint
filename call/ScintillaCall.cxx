@@ -1095,8 +1095,12 @@ int ScintillaCall::AutoCGetMaxHeight() {
 	return static_cast<int>(Call(Message::AutoCGetMaxHeight));
 }
 
-void ScintillaCall::AutoCUseStyle() {
-	Call(Message::AutoCUseStyle);
+void ScintillaCall::AutoCSetStyleOffset() {
+	Call(Message::AutoCSetStyleOffset);
+}
+
+int ScintillaCall::AutoCGetStyleOffset() {
+	return static_cast<int>(Call(Message::AutoCGetStyleOffset));
 }
 
 void ScintillaCall::SetIndent(int indentSize) {
