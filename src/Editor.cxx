@@ -171,6 +171,7 @@ Editor::Editor() : durationWrapOneByte(0.000001, 0.00000001, 0.00001) {
 	caretSticky = CaretSticky::Off;
 	marginOptions = MarginOption::None;
 	mouseSelectionRectangularSwitch = false;
+	mouseVSCode = false;
 	multipleSelection = false;
 	additionalSelectionTyping = false;
 	multiPasteMode = MultiPaste::Once;
@@ -4717,7 +4718,7 @@ void Editor::ButtonDownWithModifiers(Point pt, unsigned int curTime, KeyMod modi
 	if (multiClick) {
 		//Platform::DebugPrintf("Double click %d %d = %d\n", curTime, lastClickTime, curTime - lastClickTime);
 		ChangeMouseCapture(true);
-		if (!ctrl || !multipleSelection || (selectionUnit != TextUnit::character && selectionUnit != TextUnit::word))
+		if (!IsMultipleSelectionModifier(ctrl, alt) || !multipleSelection || (selectionUnit != TextUnit::character && selectionUnit != TextUnit::word))
 			SetEmptySelection(newPos.Position());
 		bool doubleClick = false;
 		if (inSelMargin) {
@@ -4823,7 +4824,7 @@ void Editor::ButtonDownWithModifiers(Point pt, unsigned int curTime, KeyMod modi
 			if (!shift) {
 				const ptrdiff_t selectionPart = SelectionFromPoint(pt);
 				if (selectionPart >= 0) {
-					if (multipleSelection && ctrl) {
+					if (multipleSelection && IsMultipleSelectionModifier(ctrl, alt)) {
 						// Deselect
 						if (sel.Count() > 1) {
 							DropSelection(selectionPart);
@@ -4843,7 +4844,7 @@ void Editor::ButtonDownWithModifiers(Point pt, unsigned int curTime, KeyMod modi
 			if (inDragDrop != DragDrop::initial) {
 				SetDragPosition(SelectionPosition(Sci::invalidPosition));
 				if (!shift) {
-					if (ctrl && multipleSelection) {
+					if (IsMultipleSelectionModifier(ctrl, alt) && multipleSelection) {
 						const SelectionRange range(newPos);
 						sel.TentativeSelection(range);
 						InvalidateSelection(range, true);
@@ -4853,7 +4854,7 @@ void Editor::ButtonDownWithModifiers(Point pt, unsigned int curTime, KeyMod modi
 							Redraw();
 						if ((sel.Count() > 1) || (sel.selType != Selection::SelTypes::stream))
 							sel.Clear();
-						sel.selType = alt ? Selection::SelTypes::rectangle : Selection::SelTypes::stream;
+						sel.selType = IsRectangularSelectionModifier(alt, false) ? Selection::SelTypes::rectangle : Selection::SelTypes::stream;
 						SetSelection(newPos, newPos);
 					}
 				}
@@ -4861,7 +4862,7 @@ void Editor::ButtonDownWithModifiers(Point pt, unsigned int curTime, KeyMod modi
 				if (shift)
 					anchorCurrent = sel.IsRectangular() ?
 						sel.Rectangular().anchor : sel.RangeMain().anchor;
-				sel.selType = alt ? Selection::SelTypes::rectangle : Selection::SelTypes::stream;
+				sel.selType = IsRectangularSelectionModifier(alt, shift) ? Selection::SelTypes::rectangle : Selection::SelTypes::stream;
 				selectionUnit = TextUnit::character;
 				originalAnchorPos = sel.MainCaret();
 				sel.Rectangular() = SelectionRange(newPos, anchorCurrent);
@@ -4983,7 +4984,8 @@ void Editor::ButtonMoveWithModifiers(Point pt, unsigned int, KeyMod modifiers) {
 			SetDragPosition(movePos);
 		} else {
 			if (selectionUnit == TextUnit::character) {
-				if (sel.selType == Selection::SelTypes::stream && FlagSet(modifiers, KeyMod::Alt) && mouseSelectionRectangularSwitch) {
+				if (sel.selType == Selection::SelTypes::stream && FlagSet(modifiers, KeyMod::Alt) &&
+				   IsRectangularSelectionModifier(true, FlagSet(modifiers, KeyMod::Shift)) && mouseSelectionRectangularSwitch) {
 					sel.selType = Selection::SelTypes::rectangle;
 				}
 				if (sel.IsRectangular()) {
@@ -5154,6 +5156,16 @@ void Editor::ButtonUpWithModifiers(Point pt, unsigned int curTime, KeyMod modifi
 		inDragDrop = DragDrop::none;
 		EnsureCaretVisible(false);
 	}
+}
+
+bool Editor::IsMultipleSelectionModifier(bool ctrl, bool alt)
+{
+	return (ctrl && !mouseVSCode) || (alt && mouseVSCode);
+}
+
+bool Editor::IsRectangularSelectionModifier(bool shift, bool alt)
+{
+	return alt && (!mouseVSCode || shift);
 }
 
 bool Editor::Idle() {
@@ -8770,6 +8782,13 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case Message::GetMouseSelectionRectangularSwitch:
 		return mouseSelectionRectangularSwitch;
+
+	case Message::SetMouseVSCode:
+		mouseVSCode = wParam != 0;
+		break;
+
+	case Message::GetMouseVSCode:
+		return mouseVSCode;
 
 	case Message::SetMultipleSelection:
 		multipleSelection = wParam != 0;

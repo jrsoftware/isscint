@@ -684,6 +684,8 @@ enum class Message {
 	CharPositionFromPointClose = 2562,
 	SetMouseSelectionRectangularSwitch = 2668,
 	GetMouseSelectionRectangularSwitch = 2669,
+	SetMouseVSCode = 2810,
+	GetMouseVSCode = 2811,
 	SetMultipleSelection = 2563,
 	GetMultipleSelection = 2564,
 	SetAdditionalSelectionTyping = 2565,

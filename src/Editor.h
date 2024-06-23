@@ -216,6 +216,7 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	Scintilla::CaretSticky caretSticky;
 	Scintilla::MarginOption marginOptions;
 	bool mouseSelectionRectangularSwitch;
+	bool mouseVSCode;
 	bool multipleSelection;
 	bool additionalSelectionTyping;
 	Scintilla::MultiPaste multiPasteMode;
@@ -543,6 +544,8 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	virtual void RightButtonDownWithModifiers(Point pt, unsigned int curTime, Scintilla::KeyMod modifiers);
 	void ButtonMoveWithModifiers(Point pt, unsigned int curTime, Scintilla::KeyMod modifiers);
 	void ButtonUpWithModifiers(Point pt, unsigned int curTime, Scintilla::KeyMod modifiers);
+	bool IsMultipleSelectionModifier(bool ctrl, bool alt);
+	bool IsRectangularSelectionModifier(bool shift, bool alt);
 
 	bool Idle();
 	enum class TickReason { caret, scroll, widen, dwell, platform };

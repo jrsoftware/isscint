@@ -2915,6 +2915,14 @@ bool ScintillaCall::MouseSelectionRectangularSwitch() {
 	return Call(Message::GetMouseSelectionRectangularSwitch);
 }
 
+void ScintillaCall::SetMouseVSCode(bool mouseVSCode) {
+	Call(Message::SetMouseVSCode, mouseVSCode);
+}
+
+bool ScintillaCall::MouseVSCode() {
+	return Call(Message::GetMouseVSCode);
+}
+
 void ScintillaCall::SetMultipleSelection(bool multipleSelection) {
 	Call(Message::SetMultipleSelection, multipleSelection);
 }

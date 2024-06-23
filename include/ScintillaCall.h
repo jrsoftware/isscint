@@ -774,6 +774,8 @@ public:
 	Position CharPositionFromPointClose(int x, int y);
 	void SetMouseSelectionRectangularSwitch(bool mouseSelectionRectangularSwitch);
 	bool MouseSelectionRectangularSwitch();
+	void SetMouseVSCode(bool mouseVSCode);
+	bool MouseVSCode();
 	void SetMultipleSelection(bool multipleSelection);
 	bool MultipleSelection();
 	void SetAdditionalSelectionTyping(bool additionalSelectionTyping);

@@ -2824,6 +2824,12 @@ set void SetMouseSelectionRectangularSwitch=2668(bool mouseSelectionRectangularS
 # Whether switching to rectangular mode while selecting with the mouse is allowed.
 get bool GetMouseSelectionRectangularSwitch=2669(,)
 
+# Set whether mouse behaviour is like VSCode.
+set void SetMouseVSCode=2810(bool mouseVSCode,)
+
+# Whether mouse behaviour is like VSCode.
+get bool GetMouseVSCode=2811(,)
+
 # Set whether multiple selections can be made
 set void SetMultipleSelection=2563(bool multipleSelection,)
 
