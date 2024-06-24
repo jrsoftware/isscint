@@ -806,6 +806,12 @@ fun void ClearCmdKey=2071(keymod keyDefinition,)
 # Drop all key mappings.
 fun void ClearAllCmdKeys=2072(,)
 
+enu CmdKeys=SC_CMDKEYS
+val SC_CMDKEYS_DEFAULT=0
+val SC_CMDKEYS_ALTERNATE=1
+
+fun void ResetAllCmdKeys=2812(CmdKeys cmdKeys,)
+
 # Set the styles for a segment of the document.
 fun void SetStylingEx=2073(position length, string styles)
 

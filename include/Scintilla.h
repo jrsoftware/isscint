@@ -333,6 +333,9 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SCI_ASSIGNCMDKEY 2070
 #define SCI_CLEARCMDKEY 2071
 #define SCI_CLEARALLCMDKEYS 2072
+#define SC_CMDKEYS_DEFAULT 0
+#define SC_CMDKEYS_ALTERNATE 1
+#define SCI_RESETALLCMDKEYS 2812
 #define SCI_SETSTYLINGEX 2073
 #define SCI_STYLESETVISIBLE 2074
 #define SCI_GETCARETPERIOD 2075

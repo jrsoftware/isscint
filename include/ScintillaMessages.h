@@ -161,6 +161,7 @@ enum class Message {
 	AssignCmdKey = 2070,
 	ClearCmdKey = 2071,
 	ClearAllCmdKeys = 2072,
+	ResetAllCmdKeys = 2812,
 	SetStylingEx = 2073,
 	StyleSetVisible = 2074,
 	GetCaretPeriod = 2075,

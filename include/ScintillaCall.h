@@ -234,6 +234,7 @@ public:
 	void AssignCmdKey(int keyDefinition, int sciCommand);
 	void ClearCmdKey(int keyDefinition);
 	void ClearAllCmdKeys();
+	void ResetAllCmdKeys(Scintilla::CmdKeys cmdKeys);
 	void SetStylingEx(Position length, const char *styles);
 	void StyleSetVisible(int style, bool visible);
 	int CaretPeriod();

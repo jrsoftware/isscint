@@ -755,6 +755,10 @@ void ScintillaCall::ClearAllCmdKeys() {
 	Call(Message::ClearAllCmdKeys);
 }
 
+void ScintillaCall::ResetAllCmdKeys(Scintilla::CmdKeys cmdKeys) {
+	Call(Message::ResetAllCmdKeys, static_cast<uintptr_t>(cmdKeys));
+}
+
 void ScintillaCall::SetStylingEx(Position length, const char *styles) {
 	CallString(Message::SetStylingEx, length, styles);
 }

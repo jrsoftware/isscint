@@ -7997,6 +7997,15 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		kmap.Clear();
 		break;
 
+	case Message::ResetAllCmdKeys:
+		CmdKeys cmdKeys;
+		if (static_cast<CmdKeys>(wParam) <= (CmdKeys::Default | CmdKeys::Alternate))
+			cmdKeys= static_cast<CmdKeys>(wParam);
+		else
+			cmdKeys = CmdKeys::Default;
+		kmap.ResetAllCmdKeys(cmdKeys);
+		break;
+
 	case Message::IndicSetStyle:
 		if (wParam <= IndicatorMax) {
 			vs.indicators[wParam].sacNormal.style = static_cast<IndicatorStyle>(lParam);
