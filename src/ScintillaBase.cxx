@@ -273,8 +273,7 @@ void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list
 		ac.options,
 	};
 
-	const int ctStyle = StyleDefault;
-	const Style &style = vs.styles[ctStyle + vs.autocStyleOffset];
+	const Style &style = vs.styles[vs.autocStyle];
 
 	ac.Start(wMain, idAutoComplete, sel.MainCaret(), PointMainCaret(),
 				lenEntered, style.lineHeight, IsUnicodeMode(), technology, options);
@@ -945,12 +944,12 @@ sptr_t ScintillaBase::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::AutoCGetMaxWidth:
 		return maxListWidth;
 
-	case Message::AutoCSetStyleOffset:
-		vs.autocStyleOffset = static_cast<int>(wParam);
+	case Message::AutoCSetStyle:
+		vs.autocStyle = static_cast<int>(wParam);
 		break;
 
-	case Message::AutoCGetStyleOffset:
-		return vs.autocStyleOffset;
+	case Message::AutoCGetStyle:
+		return vs.autocStyle;
 
 	case Message::RegisterImage:
 		ac.lb->RegisterImage(static_cast<int>(wParam), ConstCharPtrFromSPtr(lParam));
