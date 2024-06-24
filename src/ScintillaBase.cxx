@@ -946,6 +946,7 @@ sptr_t ScintillaBase::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case Message::AutoCSetStyle:
 		vs.autocStyle = static_cast<int>(wParam);
+		InvalidateStyleRedraw();
 		break;
 
 	case Message::AutoCGetStyle:
