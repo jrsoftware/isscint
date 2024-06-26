@@ -775,8 +775,8 @@ public:
 	Position CharPositionFromPointClose(int x, int y);
 	void SetMouseSelectionRectangularSwitch(bool mouseSelectionRectangularSwitch);
 	bool MouseSelectionRectangularSwitch();
-	void SetMouseVSCode(bool mouseVSCode);
-	bool MouseVSCode();
+	void SetMouseMapping(Scintilla::MouseMapping mouseMapping);
+	Scintilla::MouseMapping MouseMapping();
 	void SetMultipleSelection(bool multipleSelection);
 	bool MultipleSelection();
 	void SetAdditionalSelectionTyping(bool additionalSelectionTyping);

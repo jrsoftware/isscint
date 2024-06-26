@@ -2919,12 +2919,12 @@ bool ScintillaCall::MouseSelectionRectangularSwitch() {
 	return Call(Message::GetMouseSelectionRectangularSwitch);
 }
 
-void ScintillaCall::SetMouseVSCode(bool mouseVSCode) {
-	Call(Message::SetMouseVSCode, mouseVSCode);
+void ScintillaCall::SetMouseMapping(Scintilla::MouseMapping mouseMapping) {
+	Call(Message::SetMouseMapping, static_cast<uintptr_t>(mouseMapping));
 }
 
-bool ScintillaCall::MouseVSCode() {
-	return Call(Message::GetMouseVSCode);
+MouseMapping ScintillaCall::MouseMapping() {
+	return static_cast<Scintilla::MouseMapping>(Call(Message::GetMouseMapping));
 }
 
 void ScintillaCall::SetMultipleSelection(bool multipleSelection) {

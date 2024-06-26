@@ -216,7 +216,7 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	Scintilla::CaretSticky caretSticky;
 	Scintilla::MarginOption marginOptions;
 	bool mouseSelectionRectangularSwitch;
-	bool mouseVSCode;
+	Scintilla::MouseMapping mouseMapping;
 	bool multipleSelection;
 	bool additionalSelectionTyping;
 	Scintilla::MultiPaste multiPasteMode;

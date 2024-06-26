@@ -171,7 +171,7 @@ Editor::Editor() : durationWrapOneByte(0.000001, 0.00000001, 0.00001) {
 	caretSticky = CaretSticky::Off;
 	marginOptions = MarginOption::None;
 	mouseSelectionRectangularSwitch = false;
-	mouseVSCode = false;
+	mouseMapping = MouseMapping::Default;
 	multipleSelection = false;
 	additionalSelectionTyping = false;
 	multiPasteMode = MultiPaste::Once;
@@ -5160,12 +5160,13 @@ void Editor::ButtonUpWithModifiers(Point pt, unsigned int curTime, KeyMod modifi
 
 bool Editor::IsMultipleSelectionModifier(bool ctrl, bool alt)
 {
-	return (ctrl && !mouseVSCode) || (alt && mouseVSCode);
+	return (mouseMapping != MouseMapping::VscodeWindows && ctrl) ||
+	       (mouseMapping == MouseMapping::VscodeWindows && alt);
 }
 
 bool Editor::IsRectangularSelectionModifier(bool shift, bool alt)
 {
-	return alt && (!mouseVSCode || shift);
+	return (mouseMapping != MouseMapping::VscodeWindows || shift) && alt;
 }
 
 bool Editor::Idle() {
@@ -7998,12 +7999,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		break;
 
 	case Message::ResetAllCmdKeys:
-		CmdKeys cmdKeys;
-		if (static_cast<CmdKeys>(wParam) <= (CmdKeys::Default | CmdKeys::Alternate))
-			cmdKeys= static_cast<CmdKeys>(wParam);
-		else
-			cmdKeys = CmdKeys::Default;
-		kmap.ResetAllCmdKeys(cmdKeys);
+		kmap.ResetAllCmdKeys(static_cast<CmdKeys>(wParam));
 		break;
 
 	case Message::IndicSetStyle:
@@ -8792,12 +8788,12 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::GetMouseSelectionRectangularSwitch:
 		return mouseSelectionRectangularSwitch;
 
-	case Message::SetMouseVSCode:
-		mouseVSCode = wParam != 0;
+	case Message::SetMouseMapping:
+		mouseMapping = static_cast<MouseMapping>(wParam);
 		break;
 
-	case Message::GetMouseVSCode:
-		return mouseVSCode;
+	case Message::GetMouseMapping:
+		return static_cast<sptr_t>(mouseMapping);
 
 	case Message::SetMultipleSelection:
 		multipleSelection = wParam != 0;

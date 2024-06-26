@@ -200,7 +200,7 @@ enum class Layer {
 
 enum class CmdKeys {
 	Default = 0,
-	Alternate = 1,
+	VscodeWindows = 1,
 };
 
 enum class IndicatorStyle {
@@ -490,6 +490,11 @@ enum class AnnotationVisible {
 enum class UndoFlags {
 	None = 0,
 	MayCoalesce = 1,
+};
+
+enum class MouseMapping {
+	Default = 0,
+	VscodeWindows = 1,
 };
 
 enum class VirtualSpace {
@@ -836,12 +841,6 @@ constexpr KeyMod ModifierFlags(bool shift, bool ctrl, bool alt, bool meta=false,
 		(alt ? KeyMod::Alt : KeyMod::Norm) |
 		(meta ? KeyMod::Meta : KeyMod::Norm) |
 		(super ? KeyMod::Super : KeyMod::Norm);
-}
-
-// Functions to manipulate fields from a CmdKeys
-
-constexpr CmdKeys operator|(CmdKeys a, CmdKeys b) noexcept {
-	return static_cast<CmdKeys>(static_cast<int>(a) | static_cast<int>(b));
 }
 
 // Test if an enum class value has some bit flag(s) of test set.
