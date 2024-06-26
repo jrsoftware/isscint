@@ -188,6 +188,8 @@ const KeyToCommand KeyMap::MapAlternate[] = {
 * - Changed Ctrl+Shift+K to Ctrl+Shift+L for LineDelete
 * - Removed Ctrl+D which was SelectionDuplicate but should instead by used to select next match by the container
 * - Removed Ctrl+U and Ctrl+Shift+U which were [Lower|Upper]Case but instead Ctrl+U	should be used to cursor undo by the container
+* - Changed Copy and Cut to CopyAllowLine and CutAllowLine
+* - Added Alt+Up and Alt+Down for MovedSelectLines[Up|Down]
 * Notes:
 * - Alt+Shift+Up is missing but should really duplicate line above
 * - Alt+Shift+[Left|Right] are kept unchanged but should really be used to shrink or expand the selection
@@ -209,10 +211,12 @@ const KeyToCommand KeyMap::MapAlternate[] = {
     {Keys::Down,		SCI_CTRL_META,	Message::LineScrollDown},
     {Keys::Down,		SCI_ASHIFT,	Message::LineDuplicate},
     {Keys::Down,		SCI_CASHIFT,	Message::LineDownRectExtend},
+    {Keys::Down,	    SCI_ALT,	Message::MoveSelectedLinesDown},
     {Keys::Up,		    SCI_NORM,	Message::LineUp},
     {Keys::Up,			SCI_SHIFT,	Message::LineUpExtend},
     {Keys::Up,			SCI_CTRL_META,	Message::LineScrollUp},
     {Keys::Up,		    SCI_CASHIFT,	Message::LineUpRectExtend},
+    {Keys::Up,		    SCI_ALT,	Message::MoveSelectedLinesUp},
     {Key('['),			SCI_CTRL,	Message::LineBackTab},
     {Key(']'),			SCI_CTRL,	Message::LineTab},
     {Keys::Left,		SCI_NORM,	Message::CharLeft},
@@ -248,12 +252,12 @@ const KeyToCommand KeyMap::MapAlternate[] = {
     {Keys::Next, 		SCI_SHIFT, 	Message::PageDownExtend},
     {Keys::Next,		SCI_CASHIFT,	Message::PageDownRectExtend},
     {Keys::Delete,      SCI_NORM,	Message::Clear},
-    {Keys::Delete, 	    SCI_SHIFT,	Message::Cut},
+    {Keys::Delete, 	    SCI_SHIFT,	Message::CutAllowLine},
     {Keys::Delete, 	    SCI_CTRL,	Message::DelWordRight},
     {Keys::Delete,	    SCI_CSHIFT,	Message::DelLineRight},
     {Keys::Insert, 		SCI_NORM,	Message::EditToggleOvertype},
     {Keys::Insert, 		SCI_SHIFT,	Message::Paste},
-    {Keys::Insert, 		SCI_CTRL,	Message::Copy},
+    {Keys::Insert, 		SCI_CTRL,	Message::CopyAllowLine},
     {Keys::Escape,  	SCI_NORM,	Message::Cancel},
     {Keys::Back,		SCI_NORM, 	Message::DeleteBack},
     {Keys::Back,		SCI_SHIFT, 	Message::DeleteBack},
@@ -266,8 +270,8 @@ const KeyToCommand KeyMap::MapAlternate[] = {
 #else
     {Key('Y'), 			SCI_CTRL,	Message::Redo},
 #endif
-    {Key('X'), 			SCI_CTRL,	Message::Cut},
-    {Key('C'), 			SCI_CTRL,	Message::Copy},
+    {Key('X'), 			SCI_CTRL,	Message::CutAllowLine},
+    {Key('C'), 			SCI_CTRL,	Message::CopyAllowLine},
     {Key('V'), 			SCI_CTRL,	Message::Paste},
     {Key('A'), 			SCI_CTRL,	Message::SelectAll},
     {Keys::Tab,		    SCI_NORM,	Message::Tab},
