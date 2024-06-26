@@ -189,10 +189,10 @@ const KeyToCommand KeyMap::MapAlternate[] = {
 * - Removed Ctrl+D which was SelectionDuplicate but should instead by used to select next match by the container
 * - Removed Ctrl+U and Ctrl+Shift+U which were [Lower|Upper]Case but instead Ctrl+U	should be used to cursor undo by the container
 * - Changed Copy and Cut to CopyAllowLine and CutAllowLine
-* - Added Alt+Up and Alt+Down for MovedSelectLines[Up|Down]
+* - Added Alt+[Up|Down] for MovedSelectLines[Up|Down]
+* - Added Alt+Shift+[Left|Right] for Char[Left|Right]Extend but should really be used to shrink or expand the selection
 * Notes:
 * - Alt+Shift+Up is missing but should really duplicate line above
-* - Alt+Shift+[Left|Right] are kept unchanged but should really be used to shrink or expand the selection
 */ 
 
 #if OS_X_KEYS
@@ -220,11 +220,13 @@ const KeyToCommand KeyMap::MapAlternate[] = {
     {Key('['),			SCI_CTRL,	Message::LineBackTab},
     {Key(']'),			SCI_CTRL,	Message::LineTab},
     {Keys::Left,		SCI_NORM,	Message::CharLeft},
+    {Keys::Left,		SCI_SHIFT,	Message::CharLeftExtend},
     {Keys::Left,		SCI_ASHIFT,	Message::CharLeftExtend},
     {Keys::Left,		SCI_CTRL_META,	Message::WordLeft},
     {Keys::Left,		SCI_SCTRL_META,	Message::WordLeftExtend},
     {Keys::Left,		SCI_CASHIFT,	Message::CharLeftRectExtend},
     {Keys::Right,		SCI_NORM,	Message::CharRight},
+    {Keys::Right,		SCI_SHIFT,	Message::CharRightExtend},
     {Keys::Right,		SCI_ASHIFT,	Message::CharRightExtend},
     {Keys::Right,		SCI_CTRL_META,	Message::WordRight},
     {Keys::Right,		SCI_SCTRL_META,	Message::WordRightExtend},
