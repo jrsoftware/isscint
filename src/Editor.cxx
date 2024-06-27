@@ -4069,14 +4069,14 @@ int Editor::KeyDownWithModifiers(Keys key, KeyMod modifiers, bool *consumed) {
 	}
 }
 
-void Editor::Indent(bool forwards, bool forceMultilineBehaviour) {
+void Editor::Indent(bool forwards, bool lineTab) {
 	UndoGroup ug(pdoc);
 	for (size_t r=0; r<sel.Count(); r++) {
 		const Sci::Line lineOfAnchor =
 			pdoc->SciLineFromPosition(sel.Range(r).anchor.Position());
 		Sci::Position caretPosition = sel.Range(r).caret.Position();
 		const Sci::Line lineCurrentPos = pdoc->SciLineFromPosition(caretPosition);
-		if (lineOfAnchor == lineCurrentPos && !forceMultilineBehaviour) {
+		if (lineOfAnchor == lineCurrentPos && !lineTab) {
 			if (forwards) {
 				pdoc->DeleteChars(sel.Range(r).Start().Position(), sel.Range(r).Length());
 				caretPosition = sel.Range(r).caret.Position();
@@ -4119,7 +4119,7 @@ void Editor::Indent(bool forwards, bool forceMultilineBehaviour) {
 					sel.Range(r) = SelectionRange(newPos);
 				}
 			}
-		} else {	// Multiline
+		} else {	// Multiline or LineTab
 			const Sci::Position anchorPosOnLine = sel.Range(r).anchor.Position() -
 				pdoc->LineStart(lineOfAnchor);
 			const Sci::Position currentPosPosOnLine = caretPosition -
