@@ -186,7 +186,7 @@ const KeyToCommand KeyMap::MapAlternate[] = {
 * - Removed Ctrl+Shift+[ and Ctrl+Shift+]	which were Para[Up|Down]Extend but should instead be used to fold/unfold by the container
 * - Changed Ctrl+[ and Ctrl+] from Para[Up|Down] to Line(Back)Tab
 * - Changed Ctrl+Shift+K to Ctrl+Shift+L for LineDelete
-* - Removed Ctrl+D which was SelectionDuplicate but should instead by used to select next match by the container
+* - Removed Ctrl+D which was SelectionDuplicate but should instead be used to select next match by the container
 * - Removed Ctrl+U and Ctrl+Shift+U which were [Lower|Upper]Case but instead Ctrl+U	should be used to cursor undo by the container
 * - Changed Copy and Cut to CopyAllowLine and CutAllowLine
 * - Added Alt+[Up|Down] for MovedSelectLines[Up|Down]
