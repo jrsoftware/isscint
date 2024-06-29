@@ -74,7 +74,6 @@ void FontRealised::Realise(Surface &surface, int zoomLevel, Technology technolog
 	// but that would require platform layer changes.
 	measurements.ascent = std::floor(surface.Ascent(font.get()));
 	measurements.descent = std::floor(surface.Descent(font.get()));
-	measurements.lineHeight = static_cast<int>(std::lround(surface.Height(font.get())));;
 
 	measurements.capitalHeight = surface.Ascent(font.get()) - surface.InternalLeading(font.get());
 	measurements.aveCharWidth = surface.AverageCharWidth(font.get());
