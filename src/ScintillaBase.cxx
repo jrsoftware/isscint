@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cassert>
 #include <cstring>
+#include <cmath>
 
 #include <stdexcept>
 #include <string>
@@ -240,7 +241,7 @@ void ScintillaBase::AutoCompleteInsert(Sci::Position startPos, Sci::Position rem
 	}
 }
 
-void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list) {
+void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list, Surface *surfaceMeasure) {
 	//Platform::DebugPrintf("AutoComplete %s\n", list);
 	ct.CallTipCancel();
 
@@ -274,9 +275,15 @@ void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list
 	};
 
 	const Style &style = vs.styles[vs.autocStyle];
+	const Font *fontText = style.font.get();
+	int lineHeight;	
+	if (vs.autocStyle != StyleDefault)
+		lineHeight = static_cast<int>(std::lround(surfaceMeasure->Height(fontText)));
+	else
+		lineHeight = vs.lineHeight;
 
 	ac.Start(wMain, idAutoComplete, sel.MainCaret(), PointMainCaret(),
-				lenEntered, style.lineHeight, IsUnicodeMode(), technology, options);
+				lenEntered, lineHeight, IsUnicodeMode(), technology, options);
 
 	const PRectangle rcClient = GetClientRectangle();
 	Point pt = LocationFromPosition(sel.MainCaret() - lenEntered);
@@ -309,7 +316,7 @@ void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list
 	rcac.right = rcac.left + widthLB;
 	rcac.bottom = static_cast<XYPOSITION>(std::min(static_cast<int>(rcac.top) + heightLB, static_cast<int>(rcPopupBounds.bottom)));
 	ac.lb->SetPositionRelative(rcac, &wMain);
-	ac.lb->SetFont(style.font.get());
+	ac.lb->SetFont(fontText);
 	const int aveCharWidth = static_cast<int>(style.aveCharWidth);
 	ac.lb->SetAverageCharWidth(aveCharWidth);
 	ac.lb->SetDelegate(this);
@@ -818,9 +825,11 @@ void ScintillaBase::NotifyStyleToNeeded(Sci::Position endStyleNeeded) {
 
 sptr_t ScintillaBase::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	switch (iMessage) {
-	case Message::AutoCShow:
-		listType = 0;
-		AutoCompleteStart(PositionFromUPtr(wParam), ConstCharPtrFromSPtr(lParam));
+	case Message::AutoCShow: {
+			listType = 0;
+			AutoSurface surfaceMeasure(this);
+			AutoCompleteStart(PositionFromUPtr(wParam), ConstCharPtrFromSPtr(lParam), surfaceMeasure);
+		}
 		break;
 
 	case Message::AutoCCancel:
@@ -904,9 +913,11 @@ sptr_t ScintillaBase::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::AutoCGetOrder:
 		return static_cast<sptr_t>(ac.autoSort);
 
-	case Message::UserListShow:
-		listType = static_cast<int>(wParam);
-		AutoCompleteStart(0, ConstCharPtrFromSPtr(lParam));
+	case Message::UserListShow:	{
+			listType = static_cast<int>(wParam);
+			AutoSurface surfaceMeasure(this);
+			AutoCompleteStart(0, ConstCharPtrFromSPtr(lParam), surfaceMeasure);
+		}
 		break;
 
 	case Message::AutoCSetAutoHide:
