@@ -352,6 +352,7 @@ enum class Message {
 	CallTipSetBack = 2205,
 	CallTipSetFore = 2206,
 	CallTipSetForeHlt = 2207,
+	CallTipSetForeBorder = 2810,
 	CallTipUseStyle = 2212,
 	CallTipSetPosition = 2213,
 	VisibleFromDocLine = 2220,

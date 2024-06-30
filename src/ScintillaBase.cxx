@@ -1023,6 +1023,12 @@ sptr_t ScintillaBase::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		InvalidateStyleRedraw();
 		break;
 
+	case Message::CallTipSetForeBorder:
+		ct.colourLight = ColourRGBA::FromIpRGB(SPtrFromUPtr(wParam));
+		ct.colourShade = ColourRGBA::FromIpRGB(SPtrFromUPtr(lParam));
+		InvalidateStyleRedraw();
+		break;
+
 	case Message::CallTipUseStyle:
 		ct.SetTabSize(static_cast<int>(wParam));
 		InvalidateStyleRedraw();

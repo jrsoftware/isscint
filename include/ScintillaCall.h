@@ -431,6 +431,7 @@ public:
 	void CallTipSetBack(Colour back);
 	void CallTipSetFore(Colour fore);
 	void CallTipSetForeHlt(Colour fore);
+	void CallTipSetForeBorder(Colour foreLight, Colour foreShade);
 	void CallTipUseStyle(int tabSize);
 	void CallTipSetPosition(bool above);
 	Line VisibleFromDocLine(Line docLine);
