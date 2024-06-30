@@ -35,6 +35,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <richedit.h>
+#include <uxtheme.h>
 #include <windowsx.h>
 #include <shellscalingapi.h>
 
@@ -3715,6 +3716,8 @@ LRESULT ListBoxX::WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam
 				reinterpret_cast<HMENU>(static_cast<ptrdiff_t>(ctrlID)),
 				hinstanceParent,
 				0);
+			if (FlagSet(options.options, AutoCompleteOption::DarkMode) && IsAppThemed() && IsThemeActive())
+				::SetWindowTheme(HwndFromWindowID(lb), L"DarkMode_Explorer", NULL);
 			WNDPROC prevWndProc = SubclassWindow(lb, ControlWndProc);
 			::SetWindowLongPtr(lb, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(prevWndProc));
 		}
