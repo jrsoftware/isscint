@@ -1115,6 +1115,8 @@ val SC_AUTOCOMPLETE_NORMAL=0
 val SC_AUTOCOMPLETE_FIXED_SIZE=1
 # Always select the first item in the autocompletion list:
 val SC_AUTOCOMPLETE_SELECT_FIRST_ITEM=2
+# Enable dark mode, Win32 specific:
+val SC_AUTOCOMPLETE_DARK_MODE=4
 
 # Set autocompletion options.
 set void AutoCSetOptions=2638(AutoCompleteOption options,)
