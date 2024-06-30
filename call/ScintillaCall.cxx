@@ -1547,6 +1547,10 @@ void ScintillaCall::CallTipSetForeHlt(Colour fore) {
 	Call(Message::CallTipSetForeHlt, fore);
 }
 
+void ScintillaCall::CallTipSetForeBorder(Colour foreLight, Colour foreShade) {
+	Call(Message::CallTipSetForeBorder, foreLight, foreShade);
+}
+
 void ScintillaCall::CallTipUseStyle(int tabSize) {
 	Call(Message::CallTipUseStyle, tabSize);
 }
