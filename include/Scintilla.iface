@@ -1160,7 +1160,7 @@ set void AutoCSetMaxHeight=2210(int rowCount,)
 get int AutoCGetMaxHeight=2211(,)
 
 # Set the style number used for auto-completion and user lists fonts.
-set void AutoCSetStyle=2806(,)
+set void AutoCSetStyle=2806(int style,)
 
 # Get the style number used for auto-completion and user lists fonts.
 get int AutoCGetStyle=2807(,)

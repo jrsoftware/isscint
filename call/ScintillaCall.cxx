@@ -1099,8 +1099,8 @@ int ScintillaCall::AutoCGetMaxHeight() {
 	return static_cast<int>(Call(Message::AutoCGetMaxHeight));
 }
 
-void ScintillaCall::AutoCSetStyle() {
-	Call(Message::AutoCSetStyle);
+void ScintillaCall::AutoCSetStyle(int style) {
+	Call(Message::AutoCSetStyle, style);
 }
 
 int ScintillaCall::AutoCGetStyle() {
