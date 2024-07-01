@@ -319,7 +319,7 @@ public:
 	int AutoCGetMaxWidth();
 	void AutoCSetMaxHeight(int rowCount);
 	int AutoCGetMaxHeight();
-	void AutoCSetStyle();
+	void AutoCSetStyle(int style);
 	int AutoCGetStyle();
 	void SetIndent(int indentSize);
 	int Indent();
