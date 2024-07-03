@@ -3090,6 +3090,10 @@ class TestAutoComplete(unittest.TestCase):
 		self.assertEqual(self.ed.AutoCGetMaxWidth(), 100)
 		self.ed.AutoCSetMaxWidth(0)
 
+		self.ed.AutoCSetMinWidth(100)
+		self.assertEqual(self.ed.AutoCGetMinWidth(), 100)
+		self.ed.AutoCSetMinWidth(0)
+
 		self.ed.AutoCSetTypeSeparator(ord('@'))
 		self.assertEqual(self.ed.AutoCGetTypeSeparator(), ord('@'))
 		self.ed.AutoCSetTypeSeparator(ord('?'))
