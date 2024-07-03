@@ -3108,7 +3108,7 @@ class TestAutoComplete(unittest.TestCase):
 
 		self.ed.AutoCSetStyle(13)
 		self.assertEqual(self.ed.AutoCGetStyle(), 13)
-		self.ed.AutoCSetStyle(32)
+		self.ed.AutoCSetStyle(STYLE_DEFAULT)
 
 	def testAutoShow(self):
 		self.assertEqual(self.ed.AutoCActive(), 0)
