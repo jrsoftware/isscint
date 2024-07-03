@@ -318,6 +318,8 @@ public:
 	void AutoCSetTypeSeparator(int separatorCharacter);
 	void AutoCSetMaxWidth(int characterCount);
 	int AutoCGetMaxWidth();
+	void AutoCSetMinWidth(int characterCount);
+	int AutoCGetMinWidth();
 	void AutoCSetMaxHeight(int rowCount);
 	int AutoCGetMaxHeight();
 	void AutoCSetStyle(int style);

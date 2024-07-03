@@ -3090,6 +3090,10 @@ class TestAutoComplete(unittest.TestCase):
 		self.assertEqual(self.ed.AutoCGetMaxWidth(), 100)
 		self.ed.AutoCSetMaxWidth(0)
 
+		self.ed.AutoCSetMinWidth(100)
+		self.assertEqual(self.ed.AutoCGetMinWidth(), 100)
+		self.ed.AutoCSetMinWidth(0)
+
 		self.ed.AutoCSetTypeSeparator(ord('@'))
 		self.assertEqual(self.ed.AutoCGetTypeSeparator(), ord('@'))
 		self.ed.AutoCSetTypeSeparator(ord('?'))
@@ -3108,7 +3112,7 @@ class TestAutoComplete(unittest.TestCase):
 
 		self.ed.AutoCSetStyle(13)
 		self.assertEqual(self.ed.AutoCGetStyle(), 13)
-		self.ed.AutoCSetStyle(32)
+		self.ed.AutoCSetStyle(STYLE_DEFAULT)
 
 	def testAutoShow(self):
 		self.assertEqual(self.ed.AutoCActive(), 0)

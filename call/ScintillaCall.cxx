@@ -1091,6 +1091,14 @@ int ScintillaCall::AutoCGetMaxWidth() {
 	return static_cast<int>(Call(Message::AutoCGetMaxWidth));
 }
 
+void ScintillaCall::AutoCSetMinWidth(int characterCount) {
+	Call(Message::AutoCSetMinWidth, characterCount);
+}
+
+int ScintillaCall::AutoCGetMinWidth() {
+	return static_cast<int>(Call(Message::AutoCGetMinWidth));
+}
+
 void ScintillaCall::AutoCSetMaxHeight(int rowCount) {
 	Call(Message::AutoCSetMaxHeight, rowCount);
 }

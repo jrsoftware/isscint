@@ -243,6 +243,8 @@ enum class Message {
 	AutoCSetTypeSeparator = 2286,
 	AutoCSetMaxWidth = 2208,
 	AutoCGetMaxWidth = 2209,
+	AutoCSetMinWidth = 2814,
+	AutoCGetMinWidth = 2815,
 	AutoCSetMaxHeight = 2210,
 	AutoCGetMaxHeight = 2211,
 	AutoCSetStyle = 2806,
