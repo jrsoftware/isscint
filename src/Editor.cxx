@@ -5164,7 +5164,7 @@ bool Editor::IsMultipleSelectionModifier(bool ctrl, bool alt)
 	       (mouseMapping == MouseMapping::VscodeWindows && alt);
 }
 
-bool Editor::IsRectangularSelectionModifier(bool shift, bool alt)
+bool Editor::IsRectangularSelectionModifier(bool alt, bool shift)
 {
 	return (mouseMapping != MouseMapping::VscodeWindows || shift) && alt;
 }
