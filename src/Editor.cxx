@@ -5158,13 +5158,13 @@ void Editor::ButtonUpWithModifiers(Point pt, unsigned int curTime, KeyMod modifi
 	}
 }
 
-bool Editor::IsMultipleSelectionModifier(bool ctrl, bool alt)
+bool Editor::IsMultipleSelectionModifier(bool ctrl, bool alt) const
 {
 	return (mouseMapping != MouseMapping::VscodeWindows && ctrl) ||
 	       (mouseMapping == MouseMapping::VscodeWindows && alt);
 }
 
-bool Editor::IsRectangularSelectionModifier(bool alt, bool shift)
+bool Editor::IsRectangularSelectionModifier(bool alt, bool shift)	const
 {
 	return (mouseMapping != MouseMapping::VscodeWindows || shift) && alt;
 }
