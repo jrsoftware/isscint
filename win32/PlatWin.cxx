@@ -3605,6 +3605,10 @@ POINT ListBoxX::GetClientExtent() const noexcept {
 }
 
 void ListBoxX::CentreItem(int n) {
+	if (n >= 0) {
+		ListBox_SetTopIndex(lb, n);
+	}
+/*
 	// If below mid point, scroll up to centre, but with more items below if uneven
 	if (n >= 0) {
 		const POINT extent = GetClientExtent();
@@ -3616,6 +3620,7 @@ void ListBoxX::CentreItem(int n) {
 				ListBox_SetTopIndex(lb, n - half);
 		}
 	}
+*/
 }
 
 // Performs a double-buffered paint operation to avoid flicker
