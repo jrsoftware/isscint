@@ -18,6 +18,7 @@ namespace Scintilla::Internal {
 #define SCI_SUPER KeyMod::Super
 #define SCI_CSHIFT (KeyMod::Ctrl | KeyMod::Shift)
 #define SCI_ASHIFT (KeyMod::Alt | KeyMod::Shift)
+#define SCI_CASHIFT (KeyMod::Ctrl | KeyMod::Alt | KeyMod::Shift)
 
 /**
  */
@@ -51,11 +52,13 @@ public:
 class KeyMap {
 	std::map<KeyModifiers, Scintilla::Message> kmap;
 	static const KeyToCommand MapDefault[];
+	static const KeyToCommand MapVscodeWindows[];
 
 public:
 	KeyMap();
 	void Clear() noexcept;
 	void AssignCmdKey(Scintilla::Keys key, Scintilla::KeyMod modifiers, Scintilla::Message msg);
+	void ResetAllCmdKeys(Scintilla::CmdKeys cmdKeys);
 	Scintilla::Message Find(Scintilla::Keys key, Scintilla::KeyMod modifiers) const;	// 0 returned on failure
 	const std::map<KeyModifiers, Scintilla::Message> &GetKeyMap() const noexcept;
 };

@@ -755,6 +755,10 @@ void ScintillaCall::ClearAllCmdKeys() {
 	Call(Message::ClearAllCmdKeys);
 }
 
+void ScintillaCall::ResetAllCmdKeys(Scintilla::CmdKeys cmdKeys) {
+	Call(Message::ResetAllCmdKeys, static_cast<uintptr_t>(cmdKeys));
+}
+
 void ScintillaCall::SetStylingEx(Position length, const char *styles) {
 	CallString(Message::SetStylingEx, length, styles);
 }
@@ -2925,6 +2929,14 @@ void ScintillaCall::SetMouseSelectionRectangularSwitch(bool mouseSelectionRectan
 
 bool ScintillaCall::MouseSelectionRectangularSwitch() {
 	return Call(Message::GetMouseSelectionRectangularSwitch);
+}
+
+void ScintillaCall::SetMouseMapping(Scintilla::MouseMapping mouseMapping) {
+	Call(Message::SetMouseMapping, static_cast<uintptr_t>(mouseMapping));
+}
+
+MouseMapping ScintillaCall::MouseMapping() {
+	return static_cast<Scintilla::MouseMapping>(Call(Message::GetMouseMapping));
 }
 
 void ScintillaCall::SetMultipleSelection(bool multipleSelection) {

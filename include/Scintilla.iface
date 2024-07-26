@@ -806,6 +806,13 @@ fun void ClearCmdKey=2071(keymod keyDefinition,)
 # Drop all key mappings.
 fun void ClearAllCmdKeys=2072(,)
 
+enu CmdKeys=SC_CMDKEYS
+val SC_CMDKEYS_DEFAULT=0
+val SC_CMDKEYS_VSCODE_WINDOWS=1
+
+# Reset all key mappings.
+fun void ResetAllCmdKeys=2813(CmdKeys cmdKeys,)
+
 # Set the styles for a segment of the document.
 fun void SetStylingEx=2073(position length, string styles)
 
@@ -2835,6 +2842,16 @@ set void SetMouseSelectionRectangularSwitch=2668(bool mouseSelectionRectangularS
 
 # Whether switching to rectangular mode while selecting with the mouse is allowed.
 get bool GetMouseSelectionRectangularSwitch=2669(,)
+
+enu MouseMapping=SC_MOUSEMAPPING
+val SC_MOUSEMAPPING_DEFAULT=0
+val SC_MOUSEMAPPING_VSCODE_WINDOWS=1
+
+# Set mouse mapping.
+set void SetMouseMapping=2814(MouseMapping mouseMapping,)
+
+# Get mouse mapping.
+get MouseMapping GetMouseMapping=2815(,)
 
 # Set whether multiple selections can be made
 set void SetMultipleSelection=2563(bool multipleSelection,)

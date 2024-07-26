@@ -234,6 +234,7 @@ public:
 	void AssignCmdKey(int keyDefinition, int sciCommand);
 	void ClearCmdKey(int keyDefinition);
 	void ClearAllCmdKeys();
+	void ResetAllCmdKeys(Scintilla::CmdKeys cmdKeys);
 	void SetStylingEx(Position length, const char *styles);
 	void StyleSetVisible(int style, bool visible);
 	int CaretPeriod();
@@ -777,6 +778,8 @@ public:
 	Position CharPositionFromPointClose(int x, int y);
 	void SetMouseSelectionRectangularSwitch(bool mouseSelectionRectangularSwitch);
 	bool MouseSelectionRectangularSwitch();
+	void SetMouseMapping(Scintilla::MouseMapping mouseMapping);
+	Scintilla::MouseMapping MouseMapping();
 	void SetMultipleSelection(bool multipleSelection);
 	bool MultipleSelection();
 	void SetAdditionalSelectionTyping(bool additionalSelectionTyping);

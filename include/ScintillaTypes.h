@@ -198,6 +198,11 @@ enum class Layer {
 	OverText = 2,
 };
 
+enum class CmdKeys {
+	Default = 0,
+	VscodeWindows = 1,
+};
+
 enum class IndicatorStyle {
 	Plain = 0,
 	Squiggle = 1,
@@ -486,6 +491,11 @@ enum class AnnotationVisible {
 enum class UndoFlags {
 	None = 0,
 	MayCoalesce = 1,
+};
+
+enum class MouseMapping {
+	Default = 0,
+	VscodeWindows = 1,
 };
 
 enum class VirtualSpace {
