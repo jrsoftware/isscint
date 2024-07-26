@@ -2012,14 +2012,14 @@ fun void DeleteBack=2326(,)
 fun void Tab=2327(,)
 
 # Indent the current and selected lines.
-fun void LineTab=2808(,)
+fun void LineIndent=2808(,)
 
 # If selection is empty or all on one line dedent the line if caret is at start, else move caret.
 # If more than one line selected, dedent the lines.
 fun void BackTab=2328(,)
 
 # Dedent the current and selected lines.
-fun void LineBackTab=2809(,)
+fun void LineDedent=2809(,)
 
 # Insert a new line, may use a CRLF, CR or LF depending on EOL mode.
 fun void NewLine=2329(,)

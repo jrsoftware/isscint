@@ -1991,16 +1991,16 @@ void ScintillaCall::Tab() {
 	Call(Message::Tab);
 }
 
-void ScintillaCall::LineTab() {
-	Call(Message::LineTab);
+void ScintillaCall::LineIndent() {
+	Call(Message::LineIndent);
 }
 
 void ScintillaCall::BackTab() {
 	Call(Message::BackTab);
 }
 
-void ScintillaCall::LineBackTab() {
-	Call(Message::LineBackTab);
+void ScintillaCall::LineDedent() {
+	Call(Message::LineDedent);
 }
 
 void ScintillaCall::NewLine() {

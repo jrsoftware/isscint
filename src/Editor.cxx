@@ -2935,9 +2935,9 @@ void Editor::NotifyMacroRecord(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::Cancel:
 	case Message::DeleteBack:
 	case Message::Tab:
-	case Message::LineTab:
+	case Message::LineIndent:
 	case Message::BackTab:
-	case Message::LineBackTab:
+	case Message::LineDedent:
 	case Message::FormFeed:
 	case Message::VCHome:
 	case Message::VCHomeExtend:
@@ -3957,8 +3957,8 @@ int Editor::KeyCommand(Message iMessage) {
 		EnsureCaretVisible();
 		break;
 	case Message::Tab:
-	case Message::LineTab:
-		Indent(true, iMessage == Message::LineTab);
+	case Message::LineIndent:
+		Indent(true, iMessage == Message::LineIndent);
 		if (caretSticky == CaretSticky::Off) {
 			SetLastXChosen();
 		}
@@ -3966,8 +3966,8 @@ int Editor::KeyCommand(Message iMessage) {
 		ShowCaretAtCurrentPosition();		// Avoid blinking
 		break;
 	case Message::BackTab:
-	case Message::LineBackTab:
-		Indent(false, iMessage == Message::LineBackTab);
+	case Message::LineDedent:
+		Indent(false, iMessage == Message::LineDedent);
 		if ((caretSticky == CaretSticky::Off) || (caretSticky == CaretSticky::WhiteSpace)) {
 			SetLastXChosen();
 		}
@@ -4070,14 +4070,14 @@ int Editor::KeyDownWithModifiers(Keys key, KeyMod modifiers, bool *consumed) {
 	}
 }
 
-void Editor::Indent(bool forwards, bool lineTab) {
+void Editor::Indent(bool forwards, bool lineIndent) {
 	UndoGroup ug(pdoc);
 	for (size_t r=0; r<sel.Count(); r++) {
 		const Sci::Line lineOfAnchor =
 			pdoc->SciLineFromPosition(sel.Range(r).anchor.Position());
 		Sci::Position caretPosition = sel.Range(r).caret.Position();
 		const Sci::Line lineCurrentPos = pdoc->SciLineFromPosition(caretPosition);
-		if (lineOfAnchor == lineCurrentPos && !lineTab) {
+		if (lineOfAnchor == lineCurrentPos && !lineIndent) {
 			if (forwards) {
 				pdoc->DeleteChars(sel.Range(r).Start().Position(), sel.Range(r).Length());
 				caretPosition = sel.Range(r).caret.Position();
@@ -4120,7 +4120,7 @@ void Editor::Indent(bool forwards, bool lineTab) {
 					sel.Range(r) = SelectionRange(newPos);
 				}
 			}
-		} else {	// Multiline or LineTab
+		} else {	// Multiline or LineIndent
 			const Sci::Position anchorPosOnLine = sel.Range(r).anchor.Position() -
 				pdoc->LineStart(lineOfAnchor);
 			const Sci::Position currentPosPosOnLine = caretPosition -
@@ -8186,9 +8186,9 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 	case Message::Cancel:
 	case Message::DeleteBack:
 	case Message::Tab:
-	case Message::LineTab:
+	case Message::LineIndent:
 	case Message::BackTab:
-	case Message::LineBackTab:
+	case Message::LineDedent:
 	case Message::NewLine:
 	case Message::FormFeed:
 	case Message::VCHome:

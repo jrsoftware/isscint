@@ -543,9 +543,9 @@ public:
 	void Cancel();
 	void DeleteBack();
 	void Tab();
-	void LineTab();
+	void LineIndent();
 	void BackTab();
-	void LineBackTab();
+	void LineDedent();
 	void NewLine();
 	void FormFeed();
 	void VCHome();
