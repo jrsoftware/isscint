@@ -40,7 +40,7 @@ void KeyMap::AssignCmdKey(Keys key, KeyMod modifiers, Message msg) {
 
 void KeyMap::ResetAllCmdKeys(Scintilla::CmdKeys cmdKeys) {
 	Clear();
-	const KeyToCommand* map = (cmdKeys == CmdKeys::Default) ? MapDefault: MapAlternate;
+	const KeyToCommand* map = (cmdKeys == CmdKeys::Default) ? MapDefault: MapVscodeWindows;
 	for (int i = 0; static_cast<int>(map[i].key); i++) {
 		AssignCmdKey(map[i].key,
 			map[i].modifiers,
@@ -178,7 +178,7 @@ const KeyToCommand KeyMap::MapDefault[] = {
     {Key(0),SCI_NORM,static_cast<Message>(0)},
 };
 
-const KeyToCommand KeyMap::MapAlternate[] = {
+const KeyToCommand KeyMap::MapVscodeWindows[] = {
 
 /* Changes compared MapDefault:
 *  -Changed all *RectExtend from Alt+Shift to Ctrl+Alt+Shift

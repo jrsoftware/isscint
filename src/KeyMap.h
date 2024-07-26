@@ -52,7 +52,7 @@ public:
 class KeyMap {
 	std::map<KeyModifiers, Scintilla::Message> kmap;
 	static const KeyToCommand MapDefault[];
-	static const KeyToCommand MapAlternate[];
+	static const KeyToCommand MapVscodeWindows[];
 
 public:
 	KeyMap();
