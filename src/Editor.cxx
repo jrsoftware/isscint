@@ -4854,7 +4854,7 @@ void Editor::ButtonDownWithModifiers(Point pt, unsigned int curTime, KeyMod modi
 							Redraw();
 						if ((sel.Count() > 1) || (sel.selType != Selection::SelTypes::stream))
 							sel.Clear();
-						sel.selType = IsRectangularSelectionModifier(alt, false) ? Selection::SelTypes::rectangle : Selection::SelTypes::stream;
+						sel.selType = IsRectangularSelectionModifier(alt, shift /* always false */) ? Selection::SelTypes::rectangle : Selection::SelTypes::stream;
 						SetSelection(newPos, newPos);
 					}
 				}
@@ -4984,8 +4984,9 @@ void Editor::ButtonMoveWithModifiers(Point pt, unsigned int, KeyMod modifiers) {
 			SetDragPosition(movePos);
 		} else {
 			if (selectionUnit == TextUnit::character) {
-				if (sel.selType == Selection::SelTypes::stream && FlagSet(modifiers, KeyMod::Alt) &&
-				   IsRectangularSelectionModifier(true, FlagSet(modifiers, KeyMod::Shift)) && mouseSelectionRectangularSwitch) {
+				if (sel.selType == Selection::SelTypes::stream &&
+				   IsRectangularSelectionModifier(FlagSet(modifiers, KeyMod::Alt), FlagSet(modifiers, KeyMod::Shift)) &&
+					 mouseSelectionRectangularSwitch) {
 					sel.selType = Selection::SelTypes::rectangle;
 				}
 				if (sel.IsRectangular()) {
@@ -5166,7 +5167,7 @@ bool Editor::IsMultipleSelectionModifier(bool ctrl, bool alt) const
 
 bool Editor::IsRectangularSelectionModifier(bool alt, bool shift)	const
 {
-	return (mouseMapping != MouseMapping::VscodeWindows || shift) && alt;
+	return alt && (mouseMapping != MouseMapping::VscodeWindows || shift);
 }
 
 bool Editor::Idle() {
