@@ -213,7 +213,7 @@ std::string AutoComplete::GetValue(int item) const {
 void AutoComplete::Show(bool show) {
 	lb->Show(show);
 	if (show)
-		lb->Select(0);
+		lb->Select(0, true);
 }
 
 void AutoComplete::Cancel() noexcept {
@@ -233,7 +233,7 @@ void AutoComplete::Move(int delta) {
 		current = count - 1;
 	if (current < 0)
 		current = 0;
-	lb->Select(current);
+	lb->Select(current, false);
 }
 
 void AutoComplete::Select(const char *word) {
@@ -285,7 +285,7 @@ void AutoComplete::Select(const char *word) {
 		if (autoHide)
 			Cancel();
 		else
-			lb->Select(-1);
+			lb->Select(-1, true);
 	} else {
 		if (autoSort == Ordering::Custom) {
 			// Check for a logically earlier match
@@ -297,6 +297,6 @@ void AutoComplete::Select(const char *word) {
 					location = i;
 			}
 		}
-		lb->Select(sortMatrix[location]);
+		lb->Select(sortMatrix[location], true);
 	}
 }

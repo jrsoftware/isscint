@@ -3060,7 +3060,7 @@ public:
 	void Clear() noexcept override;
 	void Append(char *s, int type = -1) override;
 	int Length() override;
-	void Select(int n) override;
+	void Select(int n, bool centerItem) override;
 	int GetSelection() override;
 	int Find(const char *prefix) override;
 	std::string GetValue(int n) override;
@@ -3198,12 +3198,13 @@ int ListBoxX::Length() {
 	return lti.Count();
 }
 
-void ListBoxX::Select(int n) {
+void ListBoxX::Select(int n, bool centreItem) {
 	// We are going to scroll to centre on the new selection and then select it, so disable
 	// redraw to avoid flicker caused by a painting new selection twice in unselected and then
 	// selected states
 	SetRedraw(false);
-	CentreItem(n);
+	if(centreItem)
+		CentreItem(n);
 	ListBox_SetCurSel(lb, n);
 	OnSelChange();
 	SetRedraw(true);

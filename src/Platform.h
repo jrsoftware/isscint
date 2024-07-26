@@ -332,7 +332,7 @@ public:
 	virtual void Clear() noexcept=0;
 	virtual void Append(char *s, int type = -1)=0;
 	virtual int Length()=0;
-	virtual void Select(int n)=0;
+	virtual void Select(int n, bool centreItem)=0;
 	virtual int GetSelection()=0;
 	virtual int Find(const char *prefix)=0;
 	virtual std::string GetValue(int n)=0;
