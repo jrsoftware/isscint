@@ -109,7 +109,6 @@ constexpr bool IsArrowCharacter(char ch) noexcept {
 void DrawArrow(Surface *surface, const PRectangle &rc, bool upArrow, ColourRGBA colourBG, ColourRGBA colourUnSel) {
 	surface->FillRectangle(rc, colourBG);
 	const PRectangle rcClientInner = Clamp(rc.Inset(1), Edge::right, rc.right - 2);
-	surface->FillRectangle(rcClientInner, colourUnSel);
 
 	const XYPOSITION width = std::floor(rcClientInner.Width());
 	const XYPOSITION halfWidth = std::floor(width / 2) - 1;
@@ -124,14 +123,14 @@ void DrawArrow(Surface *surface, const PRectangle &rc, bool upArrow, ColourRGBA 
 			Point(centreX + halfWidth + pixelMove, centreY + quarterWidth + 0.5f),
 			Point(centreX + pixelMove, centreY - halfWidth + quarterWidth + 0.5f),
 		};
-		surface->Polygon(pts, std::size(pts), FillStroke(colourBG));
+		surface->Polygon(pts, std::size(pts), FillStroke(colourUnSel));
 	} else {            // Down arrow
 		const Point pts[] = {
 			Point(centreX - halfWidth + pixelMove, centreY - quarterWidth + 0.5f),
 			Point(centreX + halfWidth + pixelMove, centreY - quarterWidth + 0.5f),
 			Point(centreX + pixelMove, centreY + halfWidth - quarterWidth + 0.5f),
 		};
-		surface->Polygon(pts, std::size(pts), FillStroke(colourBG));
+		surface->Polygon(pts, std::size(pts), FillStroke(colourUnSel));
 	}
 }
 
@@ -173,12 +172,13 @@ int CallTip::DrawChunk(Surface *surface, int x, std::string_view sv,
 			if (draw) {
 				DrawArrow(surface, rcClient, upArrow, colourBG, colourUnSel);
 			}
-			offsetMain = xEnd;
 			if (upArrow) {
 				rectUp = rcClient;
 			} else {
 				rectDown = rcClient;
+				xEnd += insetX;
 			}
+			offsetMain = xEnd;
 		} else if (IsTabCharacter(sv[startSeg])) {
 			xEnd = NextTabPos(x);
 		} else {
