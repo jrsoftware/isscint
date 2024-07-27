@@ -3353,10 +3353,13 @@ Sci::Position BuiltinRegex::FindText(Document *doc, Sci::Position minPos, Sci::P
 const char *BuiltinRegex::SubstituteByPosition(Document *doc, const char *text, Sci::Position *length) {
 	substituted.clear();
 	for (Sci::Position j = 0; j < *length; j++) {
-		if (text[j] == '\\') {
+		const char ch = text[j];
+		if (ch == '\\' || ch == '$') {
+			const char ch0 = ch == '\\' ? '0' : '&';
 			const char chNext = text[++j];
-			if (chNext >= '0' && chNext <= '9') {
-				const unsigned int patNum = chNext - '0';
+			const bool chNextIs0 = chNext == ch0;
+			if (chNextIs0 || (chNext >= '1' && chNext <= '9')) {
+				const unsigned int patNum = chNextIs0 ? 0 : chNext - '0';
 				const Sci::Position startPos = search.bopat[patNum];
 				const Sci::Position len = search.eopat[patNum] - startPos;
 				if (len > 0) {	// Will be null if try for a match that did not occur
@@ -3364,7 +3367,7 @@ const char *BuiltinRegex::SubstituteByPosition(Document *doc, const char *text, 
 					substituted.resize(size + len);
 					doc->GetCharRange(substituted.data() + size, startPos, len);
 				}
-			} else {
+			} else if (ch == '\\') {
 				switch (chNext) {
 				case 'a':
 					substituted.push_back('\a');
@@ -3394,9 +3397,18 @@ const char *BuiltinRegex::SubstituteByPosition(Document *doc, const char *text, 
 					substituted.push_back('\\');
 					j--;
 				}
+			} else {
+				switch (chNext) {
+				case '$':
+					substituted.push_back('$');
+					break;
+				default:
+					substituted.push_back('$');
+					j--;
+				}
 			}
 		} else {
-			substituted.push_back(text[j]);
+			substituted.push_back(ch);
 		}
 	}
 	*length = substituted.length();
