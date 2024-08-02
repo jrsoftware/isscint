@@ -14,6 +14,8 @@ rem  -Synch it to issrc Projects\Bin
 
 setlocal
 
+cd /d %~dp0
+
 if exist buildsettings.bat goto buildsettingsfound
 :buildsettingserror
 echo buildsettings.bat is missing or incomplete. It needs to be created

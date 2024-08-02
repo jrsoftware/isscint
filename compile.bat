@@ -24,9 +24,6 @@ if "%VSTOOLSROOT%"=="" goto compilesettingserror
 
 rem -------------------------------------------------------------------------
 
-cd win32
-if errorlevel 1 goto exit
-
 set __VSCMD_ARG_NO_LOGO=1
 set VSCMD_SKIP_SENDTELEMETRY=1
 
@@ -36,6 +33,8 @@ if errorlevel 1 goto exit
 echo.
 
 echo - Compiling Scintilla.dll
+cd win32
+if errorlevel 1 goto exit
 if "%1"=="noclean" goto noclean
 nmake -s -f scintilla.mak clean
 if errorlevel 1 goto failed
