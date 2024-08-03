@@ -1167,10 +1167,10 @@ set void AutoCSetMaxHeight=2210(int rowCount,)
 get int AutoCGetMaxHeight=2211(,)
 
 # Set the style number used for auto-completion and user lists fonts.
-set void AutoCSetStyle=2806(int style,)
+set void AutoCSetStyle=2109(int style,)
 
 # Get the style number used for auto-completion and user lists fonts.
-get int AutoCGetStyle=2807(,)
+get int AutoCGetStyle=2120(,)
 
 # Set the number of spaces used for one level of indentation.
 set void SetIndent=2122(int indentSize,)
@@ -1565,7 +1565,7 @@ set void CallTipSetFore=2206(colour fore,)
 set void CallTipSetForeHlt=2207(colour fore,)
 
 # Set the foreground colours for the border of the call tip.
-set void CallTipSetForeBorder=2810(colour foreLight, colour foreShade)
+set void CallTipSetForeBorder=2816(colour foreLight, colour foreShade)
 
 # Enable use of STYLE_CALLTIP and set call tip tab size in pixels.
 set void CallTipUseStyle=2212(int tabSize,)
@@ -2694,7 +2694,7 @@ get int GetLayoutThreads=2776(,)
 fun void CopyAllowLine=2519(,)
 
 # Cut the selection, if selection empty cut the line with the caret
-fun void CutAllowLine=2805(,)
+fun void CutAllowLine=2810(,)
 
 # Compact the document buffer and return a read-only pointer to the
 # characters in the document.

@@ -275,13 +275,13 @@ void ScintillaBase::AutoCompleteStart(Sci::Position lenEntered, const char *list
 		ac.options,
 	};
 
-	int lineHeight;	
+	int lineHeight;
 	if (vs.autocStyle != StyleDefault) {
 		AutoSurface surfaceMeasure(this);
 		lineHeight = static_cast<int>(std::lround(surfaceMeasure->Height(vs.styles[vs.autocStyle].font.get())));
 	} else {
 		lineHeight = vs.lineHeight;
-  }
+	}
 
 	ac.Start(wMain, idAutoComplete, sel.MainCaret(), PointMainCaret(),
 				lenEntered, lineHeight, IsUnicodeMode(), technology, options);
