@@ -811,7 +811,7 @@ val SC_CMDKEYS_DEFAULT=0
 val SC_CMDKEYS_VSCODE_WINDOWS=1
 
 # Reset all key mappings.
-fun void ResetAllCmdKeys=2813(CmdKeys cmdKeys,)
+fun void ResetAllCmdKeys=3000(CmdKeys cmdKeys,)
 
 # Set the styles for a segment of the document.
 fun void SetStylingEx=2073(position length, string styles)
@@ -1154,10 +1154,10 @@ get int AutoCGetMaxWidth=2209(,)
 
 # Set the minimum width, in characters, of auto-completion and user lists.
 # Set to 0 to autosize to fit longest item, which is the default.
-set void AutoCSetMinWidth=2811(int characterCount,)
+set void AutoCSetMinWidth=3010(int characterCount,)
 
 # Get the minimum width, in characters, of auto-completion and user lists.
-get int AutoCGetMinWidth=2812(,)
+get int AutoCGetMinWidth=3011(,)
 
 # Set the maximum height, in rows, of auto-completion and user lists.
 # The default is 5 rows.
@@ -1565,7 +1565,7 @@ set void CallTipSetFore=2206(colour fore,)
 set void CallTipSetForeHlt=2207(colour fore,)
 
 # Set the foreground colours for the border of the call tip.
-set void CallTipSetForeBorder=2816(colour foreLight, colour foreShade)
+set void CallTipSetForeBorder=3020(colour foreLight, colour foreShade)
 
 # Enable use of STYLE_CALLTIP and set call tip tab size in pixels.
 set void CallTipUseStyle=2212(int tabSize,)
@@ -2012,14 +2012,14 @@ fun void DeleteBack=2326(,)
 fun void Tab=2327(,)
 
 # Indent the current and selected lines.
-fun void LineIndent=2808(,)
+fun void LineIndent=2813(,)
 
 # If selection is empty or all on one line dedent the line if caret is at start, else move caret.
 # If more than one line selected, dedent the lines.
 fun void BackTab=2328(,)
 
 # Dedent the current and selected lines.
-fun void LineDedent=2809(,)
+fun void LineDedent=2814(,)
 
 # Insert a new line, may use a CRLF, CR or LF depending on EOL mode.
 fun void NewLine=2329(,)
@@ -2848,10 +2848,10 @@ val SC_MOUSEMAPPING_DEFAULT=0
 val SC_MOUSEMAPPING_VSCODE_WINDOWS=1
 
 # Set mouse mapping.
-set void SetMouseMapping=2814(MouseMapping mouseMapping,)
+set void SetMouseMapping=3030(MouseMapping mouseMapping,)
 
 # Get mouse mapping.
-get MouseMapping GetMouseMapping=2815(,)
+get MouseMapping GetMouseMapping=3031(,)
 
 # Set whether multiple selections can be made
 set void SetMultipleSelection=2563(bool multipleSelection,)
