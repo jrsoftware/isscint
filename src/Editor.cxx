@@ -4107,10 +4107,10 @@ void Editor::Indent(bool forwards, bool lineIndent) {
 				}
 			}
 		} else {	// Multiline or LineIndent
-			const Sci::Position anchorPosOnLine = sel.Range(r).anchor.Position() -
+			/* const Sci::Position anchorPosOnLine = sel.Range(r).anchor.Position() -
 				pdoc->LineStart(lineOfAnchor);
 			const Sci::Position currentPosPosOnLine = caretPosition -
-				pdoc->LineStart(lineCurrentPos);
+				pdoc->LineStart(lineCurrentPos); */
 			// Multiple lines selected so indent / dedent
 			const Sci::Line lineTopSel = std::min(lineOfAnchor, lineCurrentPos);
 			Sci::Line lineBottomSel = std::max(lineOfAnchor, lineCurrentPos);
@@ -4118,6 +4118,7 @@ void Editor::Indent(bool forwards, bool lineIndent) {
 				if (pdoc->LineStart(lineBottomSel) == sel.Range(r).anchor.Position() || pdoc->LineStart(lineBottomSel) == caretPosition)
 					lineBottomSel--;  	// If not selecting any characters on a line, do not indent
 			pdoc->Indent(forwards, lineBottomSel, lineTopSel);
+			/*
 			if (lineOfAnchor < lineCurrentPos) {
 				if (currentPosPosOnLine == 0)
 					sel.Range(r) = SelectionRange(pdoc->LineStart(lineCurrentPos),
@@ -4133,6 +4134,7 @@ void Editor::Indent(bool forwards, bool lineIndent) {
 					sel.Range(r) = SelectionRange(pdoc->LineStart(lineCurrentPos),
 						pdoc->LineStart(lineOfAnchor + 1));
 			}
+			*/
 		}
 	}
 	ContainerNeedsUpdate(Update::Selection);
