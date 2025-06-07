@@ -1,3 +1,31 @@
+*** Changes for Inno Setup ***
+
+- Added support for switching to Visual Studio Code-style keyboard shortcuts, like Ctrl+D to Add Next Occurrence, Ctrl+Shift+K to delete a line:
+  - Added SC_CMDKEYS_DEFAULT and SC_CMDKEYS_VSCODE_WINDOWS
+  - Added SCI_RESETALLCMDKEYS
+- Added support for switching to Visual Studio Code-style mouse shortcuts, like Alt+Click to add an additional cursor or remove a selection:
+  - Added SC_MOUSEMAPPING_DEFAULT and SC_MOUSEMAPPING_VSCODE_WINDOWS
+  - Added SCI_SETMOUSEMAPPING and SCI_GETMOUSEMAPPING
+- Improved dark mode support for autocompletion lists and calltips:
+  - Added SC_AUTOCOMPLETE_DARK_MODE
+  - Added SCI_CALLTIPSETFOREBORDER
+- Added support for modern minimum width for autocompletion lists:
+  - Added SCI_AUTOCSETMINWIDTH and SCI_AUTOCGETMINWIDTH
+- Improved look of calltip arrows
+- Added support for modern regex replacement parameters ($&, $1..$9, and $$)
+- Enabled CXX11_REGEX by default
+- Stopped awkward centering of the selected item in autocompletion lists
+- Added SC_MARK_BACKFORE
+- Minor autocompletion improvements
+- Added batch files for compilation of Scintilla.dll
+- Added batch file to run HFacer.py and ScintillaAPIFacer.py
+
+All changes have only been tested for the Windows build
+
+Signed version of this DLL file can be downloaded from the issrc repository, renamed as isscint.dll
+
+---
+
 README for building of Scintilla, Lexilla, and SciTE
 
 Scintilla and Lexilla can be built by themselves.
