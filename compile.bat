@@ -1,11 +1,11 @@
 @echo off
 
 rem  Inno Setup
-rem  Copyright (C) 1997-2024 Jordan Russell
+rem  Copyright (C) 1997-2025 Jordan Russell
 rem  Portions by Martijn Laan
 rem  For conditions of distribution and use, see LICENSE.TXT.
 rem
-rem  Batch file to compile isscint.dll
+rem  Batch file to compile Scintilla.dll
 
 setlocal
 
