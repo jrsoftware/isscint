@@ -36,6 +36,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <richedit.h>
+#include <uxtheme.h>
 #include <windowsx.h>
 #include <shellscalingapi.h>
 
@@ -192,7 +193,7 @@ class ListBoxX : public ListBox {
 	static LRESULT PASCAL ControlWndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
 
 	static constexpr POINT ItemInset {0, 0};	// Padding around whole item
-	static constexpr POINT TextInset {2, 0};	// Padding around text
+	static constexpr POINT TextInset {2, 1};	// Padding around text
 	static constexpr POINT ImageInset {1, 0};	// Padding around image
 
 public:
@@ -218,7 +219,7 @@ public:
 	void Clear() noexcept override;
 	void Append(char *s, int type) override;
 	int Length() override;
-	void Select(int n) override;
+	void Select(int n, bool centerItem) override;
 	int GetSelection() override;
 	int Find(const char *prefix) override;
 	std::string GetValue(int n) override;
@@ -358,12 +359,13 @@ int ListBoxX::Length() {
 	return lti.Count();
 }
 
-void ListBoxX::Select(int n) {
+void ListBoxX::Select(int n, bool centreItem) {
 	// We are going to scroll to centre on the new selection and then select it, so disable
 	// redraw to avoid flicker caused by a painting new selection twice in unselected and then
 	// selected states
 	SetRedraw(false);
-	CentreItem(n);
+	if(centreItem)
+		CentreItem(n);
 	ListBox_SetCurSel(lb, n);
 	OnSelChange();
 	SetRedraw(true);
@@ -729,6 +731,10 @@ POINT ListBoxX::GetClientExtent() const noexcept {
 }
 
 void ListBoxX::CentreItem(int n) {
+	if (n >= 0) {
+		ListBox_SetTopIndex(lb, n);
+	}
+/*
 	// If below mid point, scroll up to centre, but with more items below if uneven
 	if (n >= 0) {
 		const POINT extent = GetClientExtent();
@@ -740,6 +746,7 @@ void ListBoxX::CentreItem(int n) {
 				ListBox_SetTopIndex(lb, n - half);
 		}
 	}
+*/
 }
 
 void ListBoxX::AllocateBitMap() {
@@ -847,6 +854,8 @@ LRESULT ListBoxX::WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam
 				reinterpret_cast<HMENU>(static_cast<ptrdiff_t>(ctrlID)),
 				hinstanceParent,
 				nullptr);
+			if (FlagSet(options.options, AutoCompleteOption::DarkMode) && IsAppThemed() && IsThemeActive())
+				::SetWindowTheme(HwndFromWindowID(lb), L"DarkMode_Explorer", NULL);
 			prevWndProc = SubclassWindow(lb, ControlWndProc);
 		}
 		break;

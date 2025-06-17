@@ -616,8 +616,8 @@ void SurfaceGDI::DrawRGBAImage(PRectangle rc, int width, int height, const unsig
 		DIBSection section(hdc, size);
 		if (section) {
 			RGBAImage::BGRAFromRGBA(section.Bytes(), pixelsImage, static_cast<size_t>(width) * height);
-			GdiAlphaBlend(hdc, static_cast<int>(rc.left), static_cast<int>(rc.top),
-				static_cast<int>(rc.Width()), static_cast<int>(rc.Height()), section.DC(),
+			GdiAlphaBlend(hdc, static_cast<int>(std::round(rc.left)), static_cast<int>(std::round(rc.top)),
+				static_cast<int>(std::round(rc.Width())), static_cast<int>(std::round(rc.Height())), section.DC(),
 				0, 0, width, height, mergeAlpha);
 		}
 	}
