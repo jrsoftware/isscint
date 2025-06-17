@@ -120,7 +120,7 @@ const TCHAR ListBoxX_ClassName[] = TEXT("ListBoxX");
 
 ColourRGBA ColourElement(std::optional<ColourRGBA> colour, int nIndex) {
 	if (colour.has_value()) {
-		return colour.value();
+		return colour.value().Opaque();
 	}
 	return ColourFromSys(nIndex);
 }
@@ -194,7 +194,7 @@ class ListBoxX : public ListBox {
 
 	static constexpr POINT ItemInset {0, 0};	// Padding around whole item
 	static constexpr POINT TextInset {2, 1};	// Padding around text
-	static constexpr POINT ImageInset {1, 0};	// Padding around image
+	static constexpr POINT ImageInset {1, 1};	// Padding around image
 
 public:
 	ListBoxX() = default;
@@ -750,7 +750,7 @@ void ListBoxX::CentreItem(int n) {
 }
 
 void ListBoxX::AllocateBitMap() {
-	const SIZE extent { GetClientExtent().x, lineHeight };
+	const SIZE extent { GetClientExtent().x, ItemHeight() };
 
 	graphics.bm.Create({}, extent.cx, -extent.cy, nullptr);
 	if (!graphics.bm) {
