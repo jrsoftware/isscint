@@ -194,7 +194,7 @@ class ListBoxX : public ListBox {
 
 	static constexpr POINT ItemInset {0, 0};	// Padding around whole item
 	static constexpr POINT TextInset {2, 1};	// Padding around text
-	static constexpr POINT ImageInset {1, 1};	// Padding around image
+	static constexpr POINT ImageInset {1, 0};	// Padding around image
 
 public:
 	ListBoxX() = default;
