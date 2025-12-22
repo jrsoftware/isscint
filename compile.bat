@@ -9,26 +9,32 @@ rem  Batch file to compile Scintilla.dll
 
 setlocal
 
+if "%1"=="x86" goto archfound
+if "%1"=="x64" goto archfound
+echo Architecture parameter is missing or invalid. Must be "x86" or "x64".
+goto failed2
+:archfound
+
 if exist compilesettings.bat goto compilesettingsfound
 :compilesettingserror
 echo compilesettings.bat is missing or incomplete. It needs to be created
 echo with the following line, adjusted for your system:
 echo.
-echo   set VSTOOLSROOT=C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools
+echo   set VSBUILDROOT=c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build
 goto failed2
 
 :compilesettingsfound
-set VSTOOLSROOT=
+set VSBUILDROOT=
 call .\compilesettings.bat
-if "%VSTOOLSROOT%"=="" goto compilesettingserror
+if "%VSBUILDROOT%"=="" goto compilesettingserror
 
 rem -------------------------------------------------------------------------
 
 set __VSCMD_ARG_NO_LOGO=1
 set VSCMD_SKIP_SENDTELEMETRY=1
 
-echo - Calling VsDevCmd.bat
-call "%VSTOOLSROOT%\VsDevCmd.bat"
+echo - Calling vcvarsall.bat %1
+call "%VSBUILDROOT%\vcvarsall.bat" %1
 if errorlevel 1 goto exit
 echo.
 

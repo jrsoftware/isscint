@@ -8,9 +8,10 @@ rem
 rem  Batch file to prepare isscint.dll
 rem
 rem  This batch files does the following things:
-rem  -Compile Scintilla.dll
-rem  -Copy it to issrc Files
-rem  -Synch it to issrc Projects\Bin
+rem  -Compile x86 Scintilla.dll
+rem  -Compile x64 Scintilla.dll
+rem  -Copy them to issrc Files
+rem  -Synch them to issrc Projects\Bin
 
 setlocal
 
@@ -29,13 +30,22 @@ set ISSRCROOT=
 call .\buildsettings.bat
 if "%ISSRCROOT%"=="" goto buildsettingserror
 
-
-call .\compile.bat %1
+call .\compile.bat x86 %1
 if errorlevel 1 goto failed
-echo Compiling isscint.dll done
+move /Y bin\Scintilla.dll bin\Scintilla-x86.dll
+if errorlevel 1 goto failed
+echo Compiling x86 done
 
-echo - Copying isscint.dll to issrc\Files
-copy bin\Scintilla.dll "%ISSRCROOT%\Files\isscint.dll"
+call .\compile.bat x64 %1
+if errorlevel 1 goto failed
+move /Y bin\Scintilla.dll bin\Scintilla-x64.dll
+if errorlevel 1 goto failed
+echo Compiling x64 done
+
+echo - Copying files to issrc\Files
+copy bin\Scintilla-x86.dll "%ISSRCROOT%\Files\isscint.dll"
+if errorlevel 1 goto failed
+copy bin\Scintilla-x64.dll "%ISSRCROOT%\Files\isscint-x64.dll"
 if errorlevel 1 goto failed
 call "%ISSRCROOT%\Projects\Bin\synch-isfiles.bat" nopause
 if errorlevel 1 goto failed

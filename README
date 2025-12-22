@@ -17,12 +17,12 @@
 - Stopped awkward centering of the selected item in autocompletion lists
 - Added SC_MARK_BACKFORE
 - Minor autocompletion improvements
-- Added batch files for compilation of Scintilla.dll
+- Added batch files for compilation of x84 and x64 Scintilla.dll
 - Added batch file to run HFacer.py and ScintillaAPIFacer.py
 
 All changes have only been tested for the Windows build
 
-Signed version of this DLL file can be downloaded from the issrc repository, renamed as isscint.dll
+Signed versions of these DLL files can be downloaded from the issrc repository, renamed as isscint.dll and isscint-x64.dll
 
 ---
 
