@@ -11,7 +11,8 @@ setlocal
 
 if "%1"=="x86" goto archfound
 if "%1"=="x64" goto archfound
-echo Architecture parameter is missing or invalid. Must be "x86" or "x64".
+if "%1"=="arm64" goto archfound
+echo Architecture parameter is missing or invalid. Must be "x86" or "x64" or "arm64".
 goto failed2
 :archfound
 
@@ -30,18 +31,22 @@ if "%VSBUILDROOT%"=="" goto compilesettingserror
 
 rem -------------------------------------------------------------------------
 
+set vsarch=%1
+if "%1"=="x86" set vsarch=amd64_x86
+if "%1"=="arm64" set vsarch=amd64_arm64
+
 set __VSCMD_ARG_NO_LOGO=1
 set VSCMD_SKIP_SENDTELEMETRY=1
 
-echo - Calling vcvarsall.bat %1
-call "%VSBUILDROOT%\vcvarsall.bat" %1
+echo - Calling vcvarsall.bat %vsarch%
+call "%VSBUILDROOT%\vcvarsall.bat" %vsarch%
 if errorlevel 1 goto exit
 echo.
 
 echo - Compiling Scintilla.dll
 cd win32
 if errorlevel 1 goto exit
-if "%1"=="noclean" goto noclean
+if "%2"=="noclean" goto noclean
 nmake -s -f scintilla.mak clean
 if errorlevel 1 goto failed
 :noclean
