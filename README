@@ -22,7 +22,7 @@
 
 All changes have only been tested for the Windows build
 
-Signed versions of the x64 and x64 DLL files can be downloaded from the issrc repository, renamed as isscint(-x64).dll
+Signed versions of the x86 and x64 DLL files can be downloaded from the issrc repository, renamed as isscint(-x64).dll
 
 ---
 
