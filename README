@@ -17,7 +17,7 @@
 - Stopped awkward centering of the selected item in autocompletion lists
 - Added SC_MARK_BACKFORE
 - Minor autocompletion improvements
-- Added batch files for compilation of x84, x64 and Arm64 Scintilla.dll
+- Added batch files for compilation of x86, x64 and Arm64 Scintilla.dll
 - Added batch file to run HFacer.py and ScintillaAPIFacer.py
 
 All changes have only been tested for the Windows build
