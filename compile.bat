@@ -40,12 +40,12 @@ set VSCMD_SKIP_SENDTELEMETRY=1
 
 echo - Calling vcvarsall.bat %vsarch%
 call "%VSBUILDROOT%\vcvarsall.bat" %vsarch%
-if errorlevel 1 goto exit
+if errorlevel 1 goto failed
 echo.
 
 echo - Compiling Scintilla.dll
 cd win32
-if errorlevel 1 goto exit
+if errorlevel 1 goto failed
 if "%2"=="noclean" goto noclean
 nmake -s -f scintilla.mak clean
 if errorlevel 1 goto failed
