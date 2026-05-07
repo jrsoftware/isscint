@@ -8,17 +8,24 @@
   - Added SCI_SETMOUSEMAPPING and SCI_GETMOUSEMAPPING
 - Improved dark mode support for autocompletion lists and calltips:
   - Added SC_AUTOCOMPLETE_DARK_MODE
+  - Applied Windows dark mode visual theme to autocompletion list scrollbars
   - Added SCI_CALLTIPSETFOREBORDER
 - Added support for modern minimum width for autocompletion lists:
   - Added SCI_AUTOCSETMINWIDTH and SCI_AUTOCGETMINWIDTH
 - Improved look of calltip arrows
 - Added support for modern regex replacement parameters ($&, $1..$9, and $$)
 - Enabled CXX11_REGEX by default
+- Enabled DISABLE_D2D by default
 - Stopped awkward centering of the selected item in autocompletion lists
 - Added SC_MARK_BACKFORE
 - Minor autocompletion improvements
+- Changed indent/dedent to always include the cursor line
+- Fixed SCI_SETSELECTION to notify the container when clearing multiple selections
+- Fixed pixel alignment when drawing RGBA images
+- Fixed Scintilla.iface comments for style offset setters that incorrectly said "Get" instead of "Set"
 - Added batch files for compilation of x86, x64 and Arm64 Scintilla.dll
 - Added batch file to run HFacer.py and ScintillaAPIFacer.py
+- Added Visual Studio solution and project files for debugging
 
 All changes have only been tested for the Windows build
 
