@@ -20,6 +20,10 @@ class AutoComplete {
 	char typesep; // Type separator
 	std::vector<int> sortMatrix;
 
+	/// Return the location of the first list element that starts with word, or -1 if none.
+	/// end enters as the upper bound of the search and leaves shrunk for further scans over the matching range
+	int LocateFirstMatch(const char *word, int &end) const;
+
 public:
 
 	bool ignoreCase;
@@ -91,6 +95,9 @@ public:
 
 	/// Select a list element that starts with word as the current element
 	void Select(const char *word);
+
+	/// Return whether a list element starts with word
+	bool HasPrefixMatch(const char *word) const;
 };
 
 }

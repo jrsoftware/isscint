@@ -80,12 +80,27 @@ void ScintillaBase::Finalise() {
 
 void ScintillaBase::InsertCharacter(std::string_view sv, CharacterSource charSource) {
 	const bool acActive = ac.Active();
-	const bool isFillUp = acActive && ac.IsFillUpChar(sv[0]);
+	bool isFillUp = acActive && ac.IsFillUpChar(sv[0]);
+	if (isFillUp && !inOverstrike && (sel.Count() == 1) && sel.Empty() &&
+		(sel.RangeMain().caret.VirtualSpace() == 0)) {
+		// Treat a fill up char as a normal character while the word including it
+		// is still a prefix of a list item, so the list stays open instead of completing.
+		// Form the word exactly as AutoCompleteMoveToCurrentWord will after the
+		// insertion, including the rest of the word after the caret, so the list
+		// only stays open when that word still matches. That is only exact when the
+		// insertion is purely additive, hence the guards above: no overstrike, no
+		// other carets, no selected text to replace, and no virtual space to realize.
+		const Sci::Position endWord = pdoc->ExtendWordSelect(sel.MainCaret(), 1, true);
+		std::string word = RangeText(ac.posStart - ac.startLen, sel.MainCaret());
+		word.append(sv);
+		word.append(RangeText(sel.MainCaret(), endWord));
+		isFillUp = !ac.HasPrefixMatch(word.c_str());
+	}
 	if (!isFillUp) {
 		Editor::InsertCharacter(sv, charSource);
 	}
 	if (acActive && ac.Active()) { // if it was and still is active
-		AutoCompleteCharacterAdded(sv[0]);
+		AutoCompleteCharacterAdded(sv[0], isFillUp);
 		// For fill ups add the character after the autocompletion has
 		// triggered so containers see the key so can display a calltip.
 		if (isFillUp) {
@@ -416,10 +431,10 @@ void ScintillaBase::AutoCompleteSelection() {
 	NotifyParent(scn);
 }
 
-void ScintillaBase::AutoCompleteCharacterAdded(char ch) {
-	if (ac.IsFillUpChar(ch)) {
+void ScintillaBase::AutoCompleteCharacterAdded(char ch, bool isFillUp) {
+	if (isFillUp) {
 		AutoCompleteCompleted(ch, CompletionMethods::FillUp);
-	} else if (ac.IsStopChar(ch)) {
+	} else if (ac.IsStopChar(ch) && !ac.IsFillUpChar(ch)) {
 		AutoCompleteCancel();
 	} else {
 		AutoCompleteMoveToCurrentWord();
