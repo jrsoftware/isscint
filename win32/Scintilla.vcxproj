@@ -71,6 +71,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IntDir>Intermediates\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>isscint-x64</TargetName>
+    <OutDir>..\..\issrc\Projects\Bin\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IntDir>Intermediates\$(Platform)\$(Configuration)\</IntDir>
