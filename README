@@ -17,9 +17,8 @@
 - Enabled CXX11_REGEX by default
 - Enabled DISABLE_D2D by default
 - Stopped awkward centering of the selected item in autocompletion lists
-- Made a fillup character keep the autocompletion list open instead of filling up when there's still a match
-- Other minor autocompletion improvements
 - Added SC_MARK_BACKFORE
+- Minor autocompletion improvements
 - Changed indent/dedent to always include the cursor line
 - Fixed SCI_SETSELECTION to notify the container when clearing multiple selections
 - Fixed pixel alignment when drawing RGBA images

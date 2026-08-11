@@ -246,10 +246,11 @@ void AutoComplete::Move(int delta) {
 	lb->Select(current, false);
 }
 
-int AutoComplete::LocateFirstMatch(const char *word, int &end) const {
+void AutoComplete::Select(const char *word) {
 	const size_t lenWord = strlen(word);
 	int location = -1;
 	int start = 0; // lower bound of the api array block to search
+	int end = lb->Length() - 1; // upper bound of the api array block to search
 	while (lenWord && (start <= end) && (location == -1)) { // Binary searching loop
 		int pivot = (start + end) / 2;
 		std::string item = GetValue(sortMatrix[pivot]);
@@ -290,12 +291,6 @@ int AutoComplete::LocateFirstMatch(const char *word, int &end) const {
 			start = pivot + 1;
 		}
 	}
-	return location;
-}
-
-void AutoComplete::Select(const char *word) {
-	int end = lb->Length() - 1; // upper bound of the api array block to search
-	int location = LocateFirstMatch(word, end);
 	if (location == -1) {
 		if (autoHide)
 			Cancel();
@@ -304,7 +299,6 @@ void AutoComplete::Select(const char *word) {
 	} else {
 		if (autoSort == Ordering::Custom) {
 			// Check for a logically earlier match
-			const size_t lenWord = strlen(word);
 			for (int i = location + 1; i <= end; ++i) {
 				const std::string item = lb->GetValue(sortMatrix[i]);
 				if (CompareNCaseInsensitive(word, item.c_str(), lenWord))
@@ -315,9 +309,4 @@ void AutoComplete::Select(const char *word) {
 		}
 		lb->Select(sortMatrix[location], true);
 	}
-}
-
-bool AutoComplete::HasPrefixMatch(const char *word) const {
-	int end = lb->Length() - 1; // upper bound of the api array block to search
-	return LocateFirstMatch(word, end) != -1;
 }
