@@ -9011,8 +9011,9 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case Message::SetSelection: {
 			const bool changingMultipleSelection = sel.Count() > 1;
+			const SelectionRange rangeOld = sel.RangeMain();
 			sel.SetSelection(SelectionRange(PositionFromUPtr(wParam), lParam));
-			if (changingMultipleSelection)
+			if (changingMultipleSelection || !(sel.RangeMain() == rangeOld)) // Like Editor::SetSelection
 				ContainerNeedsUpdate(Update::Selection);
 			Redraw();
 			break;
