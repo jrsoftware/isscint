@@ -2290,6 +2290,7 @@ void Editor::ClearAll() {
 		}
 		if (!pdoc->IsReadOnly()) {
 			pcs->Clear();
+			ContainerNeedsUpdate(Update::Folding);
 			pdoc->AnnotationClearAll();
 			pdoc->EOLAnnotationClearAll();
 			pdoc->MarginClearAll();
@@ -2309,6 +2310,7 @@ void Editor::ClearDocumentStyle() {
 	pdoc->StartStyling(0);
 	pdoc->SetStyleFor(pdoc->Length(), 0);
 	pcs->ShowAll();
+	ContainerNeedsUpdate(Update::Folding);
 	SetAnnotationHeights(0, pdoc->LinesTotal());
 	pdoc->ClearLevels();
 }
@@ -2643,8 +2645,14 @@ bool Editor::NotifyUpdateUI() {
 		scn.nmhdr.code = Notification::UpdateUI;
 		scn.updated = needUpdateUI;
 		scn.position = updateTextStart;
-		NotifyParent(scn);
 		needUpdateUI = Update::None;
+		const bool notifyingKeptFoldingUpdate = foldingUpdateKept;
+		foldingUpdateKept = false;
+		NotifyParent(scn);
+		// Unlike the other flags, keep a fold change the container made while handling the
+		// notification. But not twice in a row, so a handler can't cause endless notifications.
+		foldingUpdateKept = !notifyingKeptFoldingUpdate && FlagSet(needUpdateUI, Update::Folding);
+		needUpdateUI = foldingUpdateKept ? Update::Folding : Update::None;
 		updateTextStart = InvalidPosition;
 		return true;
 	}
@@ -5611,6 +5619,7 @@ void Editor::SetDocPointer(Document *document) {
 	// Reset the contraction state to fully shown.
 	pcs->Clear();
 	pcs->InsertLines(0, pdoc->LinesTotal() - 1);
+	ContainerNeedsUpdate(Update::Folding);
 	SetAnnotationHeights(0, pdoc->LinesTotal());
 	view.llc.Deallocate();
 	NeedWrapping();
@@ -5660,7 +5669,9 @@ Sci::Line Editor::ExpandLine(Sci::Line line) {
 	while (line <= lineMaxSubord) {
 		const FoldLevel level = pdoc->GetFoldLevel(line);
 		if (LevelIsHeader(level)) {
-			pcs->SetVisible(lineStart, line, true);
+			if (pcs->SetVisible(lineStart, line, true)) {
+				ContainerNeedsUpdate(Update::Folding);
+			}
 			if (pcs->GetExpanded(line)) {
 				line = ExpandLine(line);
 			} else {
@@ -5671,7 +5682,9 @@ Sci::Line Editor::ExpandLine(Sci::Line line) {
 		line++;
 	}
 	if (lineStart <= lineMaxSubord) {
-		pcs->SetVisible(lineStart, lineMaxSubord, true);
+		if (pcs->SetVisible(lineStart, lineMaxSubord, true)) {
+			ContainerNeedsUpdate(Update::Folding);
+		}
 	}
 	return lineMaxSubord;
 }
@@ -5679,6 +5692,7 @@ Sci::Line Editor::ExpandLine(Sci::Line line) {
 void Editor::SetFoldExpanded(Sci::Line lineDoc, bool expanded) {
 	if (pcs->SetExpanded(lineDoc, expanded)) {
 		RedrawSelMargin();
+		ContainerNeedsUpdate(Update::Folding);
 	}
 }
 
@@ -5696,8 +5710,12 @@ void Editor::FoldLine(Sci::Line line, FoldAction action) {
 		if (action == FoldAction::Contract) {
 			const Sci::Line lineMaxSubord = pdoc->GetLastChild(line);
 			if (lineMaxSubord > line) {
-				pcs->SetExpanded(line, false);
-				pcs->SetVisible(line + 1, lineMaxSubord, false);
+				if (pcs->SetExpanded(line, false)) {
+					ContainerNeedsUpdate(Update::Folding);
+				}
+				if (pcs->SetVisible(line + 1, lineMaxSubord, false)) {
+					ContainerNeedsUpdate(Update::Folding);
+				}
 
 				const Sci::Line lineCurrent =
 					pdoc->SciLineFromPosition(sel.MainCaret());
@@ -5712,7 +5730,9 @@ void Editor::FoldLine(Sci::Line line, FoldAction action) {
 				EnsureLineVisible(line, false);
 				GoToLine(line);
 			}
-			pcs->SetExpanded(line, true);
+			if (pcs->SetExpanded(line, true)) {
+				ContainerNeedsUpdate(Update::Folding);
+			}
 			ExpandLine(line);
 		}
 
@@ -5735,7 +5755,9 @@ void Editor::FoldExpand(Sci::Line line, FoldAction action, FoldLevel level) {
 		return;
 	const Sci::Line lineMaxSubord = pdoc->GetLastChild(line, LevelNumberPart(level));
 	line++;
-	pcs->SetVisible(line, lineMaxSubord, expanding);
+	if (pcs->SetVisible(line, lineMaxSubord, expanding)) {
+		ContainerNeedsUpdate(Update::Folding);
+	}
 	while (line <= lineMaxSubord) {
 		const FoldLevel levelLine = pdoc->GetFoldLevel(line);
 		if (LevelIsHeader(levelLine)) {
@@ -5788,7 +5810,9 @@ void Editor::EnsureLineVisible(Sci::Line lineDoc, bool enforcePolicy) {
 			if (lineDoc != lineParent)
 				EnsureLineVisible(lineParent, enforcePolicy);
 			if (!pcs->GetExpanded(lineParent)) {
-				pcs->SetExpanded(lineParent, true);
+				if (pcs->SetExpanded(lineParent, true)) {
+					ContainerNeedsUpdate(Update::Folding);
+				}
 				ExpandLine(lineParent);
 			}
 		}
@@ -5837,8 +5861,12 @@ void Editor::FoldAll(FoldAction action) {
 		}
 	}
 	if (expanding) {
-		pcs->SetVisible(0, maxLine-1, true);
-		pcs->ExpandAll();
+		if (pcs->SetVisible(0, maxLine-1, true)) {
+			ContainerNeedsUpdate(Update::Folding);
+		}
+		if (pcs->ExpandAll()) {
+			ContainerNeedsUpdate(Update::Folding);
+		}
 	} else {
 		for (; line < maxLine; line++) {
 			const FoldLevel level = pdoc->GetFoldLevel(line);
@@ -5847,7 +5875,9 @@ void Editor::FoldAll(FoldAction action) {
 					SetFoldExpanded(line, false);
 					const Sci::Line lineMaxSubord = pdoc->GetLastChild(line);
 					if (lineMaxSubord > line) {
-						pcs->SetVisible(line + 1, lineMaxSubord, false);
+						if (pcs->SetVisible(line + 1, lineMaxSubord, false)) {
+							ContainerNeedsUpdate(Update::Folding);
+						}
 						if (!contractAll) {
 							line = lineMaxSubord;
 						}
@@ -5868,6 +5898,7 @@ void Editor::FoldChanged(Sci::Line line, FoldLevel levelNow, FoldLevel levelPrev
 			// Adding a fold point.
 			if (pcs->SetExpanded(line, true)) {
 				RedrawSelMargin();
+				ContainerNeedsUpdate(Update::Folding);
 			}
 			FoldExpand(line, FoldAction::Expand, levelPrev);
 		}
@@ -5884,6 +5915,7 @@ void Editor::FoldChanged(Sci::Line line, FoldLevel levelNow, FoldLevel levelPrev
 			// otherwise lines are left invisible with no way to make them visible
 			if (pcs->SetExpanded(line, true)) {
 				RedrawSelMargin();
+				ContainerNeedsUpdate(Update::Folding);
 			}
 			// Combining two blocks where the second one is collapsed (e.g. by adding characters in the line which separates the two blocks)
 			FoldExpand(line, FoldAction::Expand, levelPrev);
@@ -5895,7 +5927,9 @@ void Editor::FoldChanged(Sci::Line line, FoldLevel levelNow, FoldLevel levelPrev
 			// See if should still be hidden
 			const Sci::Line parentLine = pdoc->GetFoldParent(line);
 			if ((parentLine < 0) || (pcs->GetExpanded(parentLine) && pcs->GetVisible(parentLine))) {
-				pcs->SetVisible(line, line, true);
+				if (pcs->SetVisible(line, line, true)) {
+					ContainerNeedsUpdate(Update::Folding);
+				}
 				SetScrollBars();
 				Redraw();
 			}
@@ -7093,6 +7127,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		if (pdoc->SetLineEndTypesAllowed(static_cast<LineEndType>(wParam))) {
 			pcs->Clear();
 			pcs->InsertLines(0, pdoc->LinesTotal() - 1);
+			ContainerNeedsUpdate(Update::Folding);
 			SetAnnotationHeights(0, pdoc->LinesTotal());
 			InvalidateStyleRedraw();
 		}
@@ -7457,6 +7492,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 			if (pdoc->SetDBCSCodePage(static_cast<int>(wParam))) {
 				pcs->Clear();
 				pcs->InsertLines(0, pdoc->LinesTotal() - 1);
+				ContainerNeedsUpdate(Update::Folding);
 				SetAnnotationHeights(0, pdoc->LinesTotal());
 				InvalidateStyleRedraw();
 				SetRepresentations();
@@ -7930,13 +7966,17 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		return pdoc->GetFoldParent(LineFromUPtr(wParam));
 
 	case Message::ShowLines:
-		pcs->SetVisible(LineFromUPtr(wParam), lParam, true);
+		if (pcs->SetVisible(LineFromUPtr(wParam), lParam, true)) {
+			ContainerNeedsUpdate(Update::Folding);
+		}
 		SetScrollBars();
 		Redraw();
 		break;
 
 	case Message::HideLines:
-		pcs->SetVisible(LineFromUPtr(wParam), lParam, false);
+		if (pcs->SetVisible(LineFromUPtr(wParam), lParam, false)) {
+			ContainerNeedsUpdate(Update::Folding);
+		}
 		SetScrollBars();
 		Redraw();
 		break;
@@ -8494,6 +8534,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 			doc->AddRef();
 			doc->Allocate(PositionFromUPtr(wParam));
 			pcs = ContractionStateCreate(pdoc->IsLarge());
+			ContainerNeedsUpdate(Update::Folding);
 			return SPtrFromPtr(doc->AsDocumentEditable());
 		}
 
@@ -8514,6 +8555,7 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 			doc->Allocate(PositionFromUPtr(wParam));
 			doc->SetUndoCollection(false);
 			pcs = ContractionStateCreate(pdoc->IsLarge());
+			ContainerNeedsUpdate(Update::Folding);
 			ILoader *loader = doc;
 			return SPtrFromPtr(loader);
 		}

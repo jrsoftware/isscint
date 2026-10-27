@@ -616,6 +616,7 @@ enum class Update {
 	HScroll = 0x8,
 	Text = 0x10,
 	LineCount = 0x20,
+	Folding = 0x40,
 };
 
 enum class FocusChange {

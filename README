@@ -18,6 +18,7 @@
 - Enabled DISABLE_D2D by default
 - Stopped awkward centering of the selected item in autocompletion lists
 - Added SC_MARK_BACKFORE
+- Added SC_UPDATE_FOLDING, which SCN_UPDATEUI reports when the view's fold state changes, also when its handler changes it, but not twice in a row
 - Minor autocompletion improvements
 - Changed indent/dedent to always include the cursor line
 - Fixed SCI_SETSELECTION to notify the container when clearing multiple selections, or when changing a single selection
@@ -28,6 +29,8 @@
 - Added Visual Studio solution and project files for debugging
 
 All changes have only been tested for the Windows build
+
+These changes are not documented in doc\ScintillaDoc.html
 
 Signed versions of the x86 and x64 DLL files can be downloaded from the issrc repository, renamed as isscint(-x64).dll
 

@@ -1276,6 +1276,7 @@ typedef sptr_t (*SciFnDirectStatus)(sptr_t ptr, unsigned int iMessage, uptr_t wP
 #define SC_UPDATE_H_SCROLL 0x8
 #define SC_UPDATE_TEXT 0x10
 #define SC_UPDATE_LINE_COUNT 0x20
+#define SC_UPDATE_FOLDING 0x40
 #define SCEN_CHANGE 768
 #define SCEN_SETFOCUS 512
 #define SCEN_KILLFOCUS 256

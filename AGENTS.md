@@ -40,7 +40,7 @@ The key class hierarchy is: `Editor` → `ScintillaBase` → `ScintillaWin`. `Ed
 
 ## Inno Setup-specific changes
 
-See the `README` file for a list of modifications.
+See the `README` file for a list of modifications. `doc\ScintillaDoc.html` is not updated for them.
 
 ## Updating from upstream
 

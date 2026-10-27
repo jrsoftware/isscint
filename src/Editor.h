@@ -264,6 +264,7 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 
 	Scintilla::Update needUpdateUI;
 	Sci::Position updateTextStart = InvalidPosition;
+	bool foldingUpdateKept = false;
 
 	enum class PaintState { notPainting, painting, abandoned } paintState;
 	bool paintAbandonedByStyling;
